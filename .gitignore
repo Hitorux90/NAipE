@@ -1,0 +1,35 @@
+# Rust
+/target/
+Cargo.lock
+
+# Node
+node_modules/
+src/dist/
+src/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Database
+*.db
+
+# Scratch/legacy
+python-core/
+testtauri/
+Environment_Control.txt
+K3 feedback.txt
+K3_preparation_status.md
+ORCHESTRATOR.md
+Sprints_and_Scaffolding.txt
+architecture.txt
+docs/
+
+# Python
+__pycache__/
+*.pyc

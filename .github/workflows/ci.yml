@@ -1,0 +1,174 @@
+name: CI/CD Binary Pinning
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  build-python-binaries:
+    name: Build Python Binary (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    outputs:
+      sha256sums: ${{ steps.sha256.outputs.sha256sums }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: python-core/requirements.txt
+
+      - name: Install pinned dependencies
+        run: |
+          python -m pip install --upgrade pip==25.0
+          pip install -r python-core/requirements.txt
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller==6.12.0
+
+      - name: Build binary with PyInstaller
+        run: |
+          python -m PyInstaller --onefile --name core python-core/main.py
+        shell: bash
+
+      - name: Rename binary for platform
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            mv dist/core.exe dist/core-win.exe
+          elif [ "${{ runner.os }}" = "macOS" ]; then
+            mv dist/core dist/core-mac
+          else
+            mv dist/core dist/core-linux
+          fi
+        shell: bash
+
+      - name: Generate SHA256SUMS.txt
+        id: sha256
+        run: |
+          BINARY_NAME=""
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            BINARY_NAME="core-win.exe"
+          elif [ "${{ runner.os }}" = "macOS" ]; then
+            BINARY_NAME="core-mac"
+          else
+            BINARY_NAME="core-linux"
+          fi
+
+          echo "Generating checksums for $BINARY_NAME"
+          sha256sum "$BINARY_NAME" > SHA256SUMS.txt
+          echo "sha256sums<<EOF" >> "$GITHUB_OUTPUT"
+          cat SHA256SUMS.txt >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+        working-directory: dist
+        shell: bash
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os == 'windows-latest' && 'core-win.exe' || format('core-{0}', runner.os) }}
+          path: dist/core-*
+
+      - name: Upload SHA256SUMS.txt artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sha256sums-${{ matrix.os }}
+          path: dist/SHA256SUMS.txt
+
+  build-tauri:
+    name: Build Tauri App
+    needs: build-python-binaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifact sets
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare binaries directory
+        run: |
+          mkdir -p src-tauri/binaries
+          for sumfile in artifacts/sha256sums-*/SHA256SUMS.txt; do
+            echo "=== $sumfile ==="
+            cat "$sumfile"
+          done
+        shell: bash
+
+      - name: Verify checksums before packaging
+        run: |
+          set -e
+          for sumfile in artifacts/sha256sums-*/SHA256SUMS.txt; do
+            OS_DIR=$(basename "$(dirname "$sumfile")" | sed 's/sha256sums-//')
+            echo "Verifying checksums for $OS_DIR"
+            cp "$sumfile" "artifacts/$OS_DIR/"
+            (cd "artifacts/$OS_DIR" && sha256sum -c SHA256SUMS.txt)
+          done
+        shell: bash
+
+      - name: Copy verified binaries into Tauri binaries directory
+        run: |
+          cp artifacts/ubuntu-latest/core-linux src-tauri/binaries/core-linux
+          cp artifacts/macOS-latest/core-mac src-tauri/binaries/core-mac
+          cp artifacts/Windows-latest/core-win.exe src-tauri/binaries/core-win.exe
+        shell: bash
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          target: x86_64-apple-darwin,aarch64-apple-darwin,x86_64-unknown-linux-gnu,x86_64-pc-windows-msvc
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+          cache-dependency-path: src-tauri/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: src-tauri
+
+      - name: Run Tauri build
+        run: npm run tauri build
+        working-directory: src-tauri
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: python-core/requirements.txt
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip==25.0
+          pip install -r python-core/requirements.txt -r python-core/requirements-dev.txt
+
+      - name: Run pytest
+        run: pytest -vv python-core/tests
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml

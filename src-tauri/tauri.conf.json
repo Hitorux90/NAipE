@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "New ApE",
+  "version": "0.1.0",
+  "identifier": "com.newape.dev",
+  "build": {
+    "beforeDevCommand": "cd src && npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "cd src && npm run build",
+    "frontendDist": "../src/dist"
+  },
+  "app": {
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "title": "New ApE",
+        "minWidth": 800,
+        "minHeight": 600,
+        "width": 1200,
+        "height": 900,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
