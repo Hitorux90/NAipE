@@ -1,0 +1,38 @@
+[
+  {
+    "id": "p001",
+    "name": "Promoter_strong",
+    "category": "promoter",
+    "sequence": "TTGACATTGATTATTTACTA",
+    "length_bp": 20,
+    "source": "synthetic",
+    "notes": "Strong constitutive promoter for scaffold validation"
+  },
+  {
+    "id": "p002",
+    "name": "RBS_B0034",
+    "category": "rbs",
+    "sequence": "TCGAGGGAG",
+    "length_bp": 9,
+    "source": "iGEM",
+    "notes": "Standard RBS from Anderson collection"
+  },
+  {
+    "id": "p003",
+    "name": "CDS_GFP",
+    "category": "cds",
+    "sequence": "ATGCGTAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAAATTTTCTGTCAGTGGAGAGGGTGAAGGTGATGCAACATACGGAAAACTTACCCTTAAATTTATTTGCACTACTGGAAAACTACCTGTTCCATGGCCAACACTTGTCACTACTTTGCTTCTGGTGTTCAATGCTTTTCA",
+    "length_bp": 720,
+    "source": "iGEM",
+    "notes": "GFP coding sequence for validation"
+  },
+  {
+    "id": "p004",
+    "name": "Terminator_T9002",
+    "category": "terminator",
+    "sequence": "CCAGAACAGTAATCTCTCAACAAGGCGG",
+    "length_bp": 25,
+    "source": "iGEM",
+    "notes": "Rho-independent terminator"
+  }
+]
