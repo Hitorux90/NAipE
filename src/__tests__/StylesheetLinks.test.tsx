@@ -9,5 +9,7 @@ describe('StylesheetLinks', () => {
     const html = fs.readFileSync(htmlPath, 'utf-8');
     expect(html).toContain('href="/src/styles/reset.css"');
     expect(html).toContain('href="/src/styles/tokens.css"');
+    expect(html).toContain('href="/src/styles/loading.css"');
+    expect(html).toContain('href="/src/styles/error.css"');
   });
 });

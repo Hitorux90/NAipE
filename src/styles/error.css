@@ -1,0 +1,43 @@
+/* ============================================================
+   NAipE — Error States (Fase 1b)
+   ============================================================ */
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border-subtle, #E5E7EB);
+  background: var(--color-danger-bg, #FEF2F2);
+  color: var(--color-danger, #DC2626);
+  font-size: var(--font-size-ui-small, 12px);
+}
+
+.error-banner__icon {
+  width: var(--icon-size-standard, 20px);
+  height: var(--icon-size-standard, 20px);
+  flex-shrink: 0;
+}
+
+.error-banner__message {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.error-banner__close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+}
+
+.error-banner__close:hover {
+  background: rgba(0, 0, 0, 0.05);
+}

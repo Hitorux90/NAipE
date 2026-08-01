@@ -3,9 +3,12 @@
    Single source of truth for icon usage.
    ============================================================ */
 
+import { type ComponentType } from 'react';
+import type { LucideProps } from 'lucide-react';
 import {
   Dna,
-  FileOpen,
+  File,
+  FolderOpen,
   Save,
   Plus,
   Library,
@@ -19,6 +22,7 @@ import {
   Map,
   AlignLeft,
   Tag,
+  Activity,
   AlertCircle,
   AlertTriangle,
   Info,
@@ -28,13 +32,12 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelRightClose,
-  FolderOpen,
-  Activity,
 } from 'lucide-react';
 
 export type IconName =
   | 'dna'
-  | 'file-open'
+  | 'file'
+  | 'folder-open'
   | 'save'
   | 'plus'
   | 'library'
@@ -55,13 +58,13 @@ export type IconName =
   | 'loading'
   | 'close'
   | 'collapse-left'
-  | 'collapse-right'
-  | 'folder-open'
-  | 'activity';
+  | 'collapse-right';
 
-const registry: Record<IconName, React.FC<{ size?: number; color?: string; className?: string }>> = {
+type IconProps = LucideProps;
+const registry: Record<IconName, ComponentType<IconProps>> = {
   'dna': Dna,
-  'file-open': FileOpen,
+  'file': File,
+  'folder-open': FolderOpen,
   'save': Save,
   'plus': Plus,
   'library': Library,
@@ -83,8 +86,6 @@ const registry: Record<IconName, React.FC<{ size?: number; color?: string; class
   'close': X,
   'collapse-left': PanelLeftClose,
   'collapse-right': PanelRightClose,
-  'folder-open': FolderOpen,
-  'activity': Activity,
 };
 
 export function getIcon(name: IconName) {
