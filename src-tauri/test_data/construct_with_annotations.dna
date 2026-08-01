@@ -1,0 +1,32 @@
+{
+  "name": "construct_with_annotations",
+  "sequence_id": 0,
+  "parts": [
+    {
+      "part_id": "p001",
+      "start": 0,
+      "end": 20,
+      "strand": 1,
+      "color": "#4caf50",
+      "order": 0,
+      "annotations": [
+        {
+          "name": "promoter",
+          "feature_type": "promoter",
+          "start": 0,
+          "end": 20,
+          "strand": 1,
+          "color": "#4caf50"
+        },
+        {
+          "name": "note",
+          "feature_type": "misc",
+          "start": 1,
+          "end": 10,
+          "strand": 1,
+          "color": "#9e9e9e"
+        }
+      ]
+    }
+  ]
+}

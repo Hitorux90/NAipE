@@ -1,0 +1,30 @@
+{
+  "name": "construct_three_parts",
+  "sequence_id": 0,
+  "parts": [
+    {
+      "part_id": "p001",
+      "start": 0,
+      "end": 20,
+      "strand": 1,
+      "color": "#4caf50",
+      "order": 0
+    },
+    {
+      "part_id": "p003",
+      "start": 0,
+      "end": 720,
+      "strand": 1,
+      "color": "#ff9800",
+      "order": 1
+    },
+    {
+      "part_id": "p004",
+      "start": 0,
+      "end": 25,
+      "strand": -1,
+      "color": "#f44336",
+      "order": 2
+    }
+  ]
+}

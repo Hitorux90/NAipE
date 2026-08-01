@@ -427,6 +427,54 @@ def _handle_command(cmd, msg_id, payload):
         except Exception as exc:
             return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
 
+    if cmd == "open_construct":
+        db_path = payload.get("db_path") or _find_db_path()
+        construct_id = payload.get("construct_id")
+        if not db_path or not os.path.exists(db_path):
+            return _error(msg_id, cmd, "INTERNAL_ERROR", "database not found")
+        if construct_id is None:
+            return _error(msg_id, cmd, "INVALID_REQUEST", "missing construct_id")
+        try:
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute("SELECT name, sequence_id, created_at_ms FROM Constructs WHERE id = ?", (construct_id,))
+            construct = cur.fetchone()
+            if not construct:
+                conn.close()
+                return _error(msg_id, cmd, "SEQUENCE_NOT_FOUND", "construct not found")
+            cur.execute(
+                'SELECT part_id, start, end, strand, color, "order" FROM Construct_Parts WHERE construct_id = ? ORDER BY "order"',
+                (construct_id,),
+            )
+            parts = []
+            for row in cur.fetchall():
+                parts.append({
+                    "part_id": row["part_id"],
+                    "start": row["start"],
+                    "end": row["end"],
+                    "strand": row["strand"],
+                    "color": row["color"],
+                    "order": row["order"],
+                })
+            conn.close()
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "open_construct",
+                "payload": {
+                    "id": construct_id,
+                    "name": construct["name"],
+                    "sequence_id": construct["sequence_id"],
+                    "created_at_ms": construct["created_at_ms"],
+                    "parts": parts,
+                },
+                "ok": True,
+            }
+        except Exception as exc:
+            return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
+
     if cmd == "undo":
         return _error(msg_id, cmd, "UNKNOWN_COMMAND", "undo requires Rust-owned stack; not exposed via sidecar yet")
 

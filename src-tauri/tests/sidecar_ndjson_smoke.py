@@ -572,3 +572,54 @@ def test_list_constructs(sidecar_proc):
     assert resp is not None
     assert resp["ok"] is True
     assert "constructs" in resp["payload"]
+
+
+def test_open_construct(sidecar_proc_with_db):
+    create_id = "test-open-construct-create"
+    send(
+        sidecar_proc_with_db,
+        {
+            "id": create_id,
+            "type": "request",
+            "command": "create_construct",
+            "payload": {"name": "OpenConstruct", "sequence_id": 1},
+        },
+    )
+    create_resp = read(sidecar_proc_with_db)
+    assert create_resp["ok"] is True
+    construct_id = create_resp["payload"]["id"]
+
+    add_id = "test-open-construct-add"
+    send(
+        sidecar_proc_with_db,
+        {
+            "id": add_id,
+            "type": "request",
+            "command": "add_part_to_construct",
+            "payload": {"construct_id": construct_id, "part_id": "p001", "start": 0, "end": 20, "strand": 1, "color": "#4caf50", "order": 0},
+        },
+    )
+    add_resp = read(sidecar_proc_with_db)
+    assert add_resp["ok"] is True
+
+    msg_id = "test-open-construct"
+    send(
+        sidecar_proc_with_db,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "open_construct",
+            "payload": {"construct_id": construct_id},
+        },
+    )
+    resp = read(sidecar_proc_with_db)
+    assert resp is not None
+    assert resp["ok"] is True
+    assert resp["command"] == "open_construct"
+    assert resp["payload"]["name"] == "OpenConstruct"
+    parts = resp["payload"]["parts"]
+    assert len(parts) == 1
+    assert parts[0]["part_id"] == "p001"
+    assert parts[0]["start"] == 0
+    assert parts[0]["end"] == 20
+    assert parts[0]["order"] == 0

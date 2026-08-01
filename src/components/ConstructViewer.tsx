@@ -12,7 +12,7 @@ type ConstructPart = {
 };
 
 type Construct = {
-  id: string;
+  id: number;
   name: string;
   sequence_id: number;
   created_at_ms: number;
@@ -25,7 +25,6 @@ interface Props {
 
 export default function ConstructViewer({ constructId }: Props) {
   const [construct, setConstruct] = useState<Construct | null>(null);
-  const [parts, setParts] = useState<ConstructPart[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,17 +33,10 @@ export default function ConstructViewer({ constructId }: Props) {
     async function load() {
       setError(null);
       setConstruct(null);
-      setParts([]);
       try {
         const { invoke } = await import('@tauri-apps/api/core');
-        const [c, ps] = await Promise.all([
-          invoke<Construct>('get_construct', { constructId: Number(constructId) }),
-          invoke<ConstructPart[]>('list_construct_parts', { constructId: Number(constructId) }),
-        ]);
-        if (!cancelled) {
-          setConstruct(c);
-          setParts(ps ?? []);
-        }
+        const c = await invoke<Construct>('open_construct', { constructId: Number(constructId) });
+        if (!cancelled) setConstruct(c);
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? 'Failed to load construct');
       }
@@ -71,11 +63,11 @@ export default function ConstructViewer({ constructId }: Props) {
       <dl className="construct-meta">
         <dt>ID</dt><dd>{construct.id}</dd>
         <dt>Sequence</dt><dd>{construct.sequence_id}</dd>
-        <dt>Parts</dt><dd>{parts.length}</dd>
+        <dt>Parts</dt><dd>{construct.parts.length}</dd>
       </dl>
       <div className="construct-canvas" role="img" aria-label={`${construct.name} assembly map`}>
-        {parts.length === 0 && <p className="empty-state">No parts</p>}
-        {parts.map((part, idx) => (
+        {construct.parts.length === 0 && <p className="empty-state">No parts</p>}
+        {construct.parts.map((part) => (
           <div
             key={part.id}
             className="construct-part-tile"

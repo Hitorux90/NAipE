@@ -1,0 +1,22 @@
+{
+  "name": "construct_two_parts",
+  "sequence_id": 0,
+  "parts": [
+    {
+      "part_id": "p001",
+      "start": 0,
+      "end": 20,
+      "strand": 1,
+      "color": "#4caf50",
+      "order": 0
+    },
+    {
+      "part_id": "p002",
+      "start": 0,
+      "end": 9,
+      "strand": 1,
+      "color": "#2196f3",
+      "order": 1
+    }
+  ]
+}
