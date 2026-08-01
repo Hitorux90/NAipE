@@ -1,5 +1,6 @@
 // src/components/AssemblyCanvas.tsx
 import { useState, useCallback } from 'react';
+import AnnotationDialog, { Annotation } from './AnnotationDialog';
 
 type ConstructPart = {
   id: string;
@@ -11,17 +12,23 @@ type ConstructPart = {
   order: number;
 };
 
+interface PartWithAnnotations extends ConstructPart {
+  annotations: Annotation[];
+}
+
 interface Props {
   constructId?: number | string;
   onSave?: () => void;
 }
 
 export default function AssemblyCanvas({ constructId, onSave }: Props) {
-  const [parts, setParts] = useState<ConstructPart[]>([]);
+  const [parts, setParts] = useState<PartWithAnnotations[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [activePartId, setActivePartId] = useState<string | null>(null);
+  const [annotationsByPart, setAnnotationsByPart] = useState<Record<string, Annotation[]>>({});
 
   const load = useCallback(async () => {
     if (constructId == null) return;
@@ -30,13 +37,36 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       const ps = await invoke<ConstructPart[]>('list_construct_parts', { constructId: Number(constructId) });
-      setParts(ps ?? []);
+      const parts = ps ?? [];
+      setParts(parts.map((p) => ({ ...p, annotations: [] })));
     } catch (e: any) {
       setError(e?.message ?? 'Failed to load parts');
     } finally {
       setLoading(false);
     }
   }, [constructId]);
+
+  const loadAnnotations = useCallback(async (partId: string) => {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const annotations = await invoke<Annotation[]>('list_annotations', { constructPartId: Number(partId) });
+      setAnnotationsByPart((prev) => ({ ...prev, [partId]: annotations ?? [] }));
+      setParts((prev) => prev.map((p) => (p.id === partId ? { ...p, annotations: annotations ?? [] } : p)));
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to load annotations');
+    }
+  }, []);
+
+  const handleCreateAnnotation = useCallback(
+    async (partId: string) => {
+      await loadAnnotations(partId);
+    },
+    [loadAnnotations],
+  );
+
+  const handlePartClick = useCallback((partId: string) => {
+    setActivePartId(partId);
+  }, []);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
@@ -100,9 +130,22 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
             key={p.id}
             className="construct-part-tile"
             style={{ backgroundColor: p.color ?? '#888', order: p.order }}
+            onClick={() => handlePartClick(p.id)}
           >
             <span className="part-label">{p.part_id}</span>
             <span className="part-coords">{p.start}-{p.end}</span>
+            {(p.annotations ?? []).map((a) => (
+              <div
+                key={a.id}
+                className="annotation-overlay"
+                style={{
+                  backgroundColor: a.color ?? '#ff0000',
+                  left: `${((a.start - p.start) / (p.end - p.start || 1)) * 100}%`,
+                  width: `${((a.end - a.start) / (p.end - p.start || 1)) * 100}%`,
+                }}
+                title={`${a.name}: ${a.feature_type} ${a.start}-${a.end}`}
+              />
+            ))}
           </div>
         ))}
       </div>
@@ -113,6 +156,18 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
           </button>
         </div>
       )}
+      <AnnotationDialog
+        open={!!activePartId}
+        constructPartId={Number(activePartId)}
+        onClose={() => setActivePartId(null)}
+        onCreated={(annotation) => {
+          setActivePartId(null);
+          if (activePartId) {
+            handleCreateAnnotation(activePartId);
+          }
+        }}
+      />
     </div>
   );
 }
+

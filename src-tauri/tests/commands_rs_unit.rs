@@ -58,6 +58,10 @@ async fn seed_schema(p: &SqlitePool) {
         .execute(p)
         .await
         .expect("create construct parts");
+    sqlx::query(apetauri_lib::db::schema::CREATE_CONSTRUCT_ANNOTATIONS)
+        .execute(p)
+        .await
+        .expect("create construct annotations");
 }
 
 #[tokio::test]
