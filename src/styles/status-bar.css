@@ -1,0 +1,44 @@
+/* ============================================================
+   NAipE — StatusBar (Fase 1b)
+   Bottom status bar.
+   ============================================================ */
+
+.layout__status-bar {
+  grid-area: status-bar;
+  height: var(--layout-status-bar-height, 24px);
+  background: var(--color-bg-status, #F9FAFB);
+  border-top: 1px solid var(--color-border-subtle, #E5E7EB);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  font-size: var(--font-size-ui-small, 12px);
+  color: var(--color-text-secondary, #6B7280);
+}
+
+.status-bar__left,
+.status-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.status-bar__message {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-bar__indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-bar__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success, #16A34A);
+}
