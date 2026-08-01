@@ -61,13 +61,36 @@ BEGIN
 END;
 "#;
 
-pub const CREATE_TRIGGER_ASSEMBLY_HISTORY_DELETE: &str = r#"
+pub const CREATE_ASSEMBLY_HISTORY_DELETE: &str = r#"
 CREATE TRIGGER IF NOT EXISTS prevent_assembly_history_delete
 BEFORE DELETE ON Assembly_History
 FOR EACH ROW
 BEGIN
     SELECT RAISE(ABORT, 'Assembly_History is immutable');
 END;
+"#;
+
+pub const CREATE_CONSTRUCTS: &str = r#"
+CREATE TABLE IF NOT EXISTS Constructs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    sequence_id INTEGER REFERENCES Sequences(id),
+    created_at_ms INTEGER NOT NULL
+);
+"#;
+
+pub const CREATE_CONSTRUCT_PARTS: &str = r#"
+CREATE TABLE IF NOT EXISTS Construct_Parts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    construct_id INTEGER REFERENCES Constructs(id),
+    part_id TEXT NOT NULL,
+    start INTEGER NOT NULL,
+    end INTEGER NOT NULL,
+    strand INTEGER NOT NULL CHECK(strand IN (-1,1)),
+    color TEXT,
+    "order" INTEGER NOT NULL,
+    created_at_ms INTEGER NOT NULL
+);
 "#;
 
 /// Apply the full SQLite schema (tables + immutability triggers).
@@ -87,7 +110,13 @@ pub async fn run_schema(conn: &mut SqliteConnection) -> sqlx::Result<()> {
     sqlx::query(CREATE_TRIGGER_ASSEMBLY_HISTORY_UPDATE)
         .execute(&mut *conn)
         .await?;
-    sqlx::query(CREATE_TRIGGER_ASSEMBLY_HISTORY_DELETE)
+    sqlx::query(CREATE_ASSEMBLY_HISTORY_DELETE)
+        .execute(&mut *conn)
+        .await?;
+    sqlx::query(CREATE_CONSTRUCTS)
+        .execute(&mut *conn)
+        .await?;
+    sqlx::query(CREATE_CONSTRUCT_PARTS)
         .execute(&mut *conn)
         .await?;
     Ok(())
