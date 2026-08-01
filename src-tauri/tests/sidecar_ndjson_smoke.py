@@ -74,6 +74,19 @@ def sidecar_proc_with_db(tmp_path):
             created_at_ms INTEGER NOT NULL
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS Construct_Annotations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            construct_part_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            feature_type TEXT NOT NULL,
+            start INTEGER NOT NULL,
+            end INTEGER NOT NULL,
+            strand INTEGER NOT NULL,
+            color TEXT,
+            created_at_ms INTEGER NOT NULL
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -601,6 +614,7 @@ def test_open_construct(sidecar_proc_with_db):
     )
     add_resp = read(sidecar_proc_with_db)
     assert add_resp["ok"] is True
+    part_id = add_resp["payload"]["id"]
 
     msg_id = "test-open-construct"
     send(
@@ -623,3 +637,112 @@ def test_open_construct(sidecar_proc_with_db):
     assert parts[0]["start"] == 0
     assert parts[0]["end"] == 20
     assert parts[0]["order"] == 0
+
+
+def test_create_annotation(sidecar_proc_with_db):
+    create_id = "test-create-annotation-construct"
+    send(
+        sidecar_proc_with_db,
+        {
+            "id": create_id,
+            "type": "request",
+            "command": "create_construct",
+            "payload": {"name": "AnnotConstruct", "sequence_id": 1},
+        },
+    )
+    create_resp = read(sidecar_proc_with_db)
+    assert create_resp["ok"] is True
+    construct_id = create_resp["payload"]["id"]
+
+    add_id = "test-create-annotation-part"
+    send(
+        sidecar_proc_with_db,
+        {
+            "id": add_id,
+            "type": "request",
+            "command": "add_part_to_construct",
+            "payload": {"construct_id": construct_id, "part_id": "p001", "start": 0, "end": 10, "strand": 1, "color": "#888", "order": 0},
+        },
+    )
+    add_resp = read(sidecar_proc_with_db)
+    assert add_resp["ok"] is True
+    part_id = add_resp["payload"]["id"]
+
+    msg_id = "test-create-annotation"
+    send(
+        sidecar_proc_with_db,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "create_annotation",
+            "payload": {"construct_part_id": part_id, "name": "geneA", "feature_type": "gene", "start": 0, "end": 10, "strand": 1, "color": "#ff0000"},
+        },
+    )
+    resp = read(sidecar_proc_with_db)
+    assert resp is not None
+    assert resp["ok"] is True
+    assert resp["command"] == "create_annotation"
+    assert resp["payload"]["id"] > 0
+
+
+def test_list_annotations(sidecar_proc_with_db):
+    create_id = "test-list-annotations-construct"
+    send(
+        sidecar_proc_with_db,
+        {
+            "id": create_id,
+            "type": "request",
+            "command": "create_construct",
+            "payload": {"name": "ListAnnotConstruct", "sequence_id": 1},
+        },
+    )
+    create_resp = read(sidecar_proc_with_db)
+    assert create_resp["ok"] is True
+    construct_id = create_resp["payload"]["id"]
+
+    add_id = "test-list-annotations-part"
+    send(
+        sidecar_proc_with_db,
+        {
+            "id": add_id,
+            "type": "request",
+            "command": "add_part_to_construct",
+            "payload": {"construct_id": construct_id, "part_id": "p001", "start": 0, "end": 10, "strand": 1, "color": "#888", "order": 0},
+        },
+    )
+    add_resp = read(sidecar_proc_with_db)
+    assert add_resp["ok"] is True
+    part_id = add_resp["payload"]["id"]
+
+    for name, feature_type, color in [("geneA", "gene", "#ff0000"), ("promB", "promoter", "#00ff00")]:
+        msg_id = f"test-create-annotation-{name}"
+        send(
+            sidecar_proc_with_db,
+            {
+                "id": msg_id,
+                "type": "request",
+                "command": "create_annotation",
+                "payload": {"construct_part_id": part_id, "name": name, "feature_type": feature_type, "start": 0, "end": 10, "strand": 1, "color": color},
+            },
+        )
+        resp = read(sidecar_proc_with_db)
+        assert resp["ok"] is True
+
+    msg_id = "test-list-annotations"
+    send(
+        sidecar_proc_with_db,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "list_annotations",
+            "payload": {"construct_part_id": part_id},
+        },
+    )
+    resp = read(sidecar_proc_with_db)
+    assert resp is not None
+    assert resp["ok"] is True
+    assert resp["command"] == "list_annotations"
+    annotations = resp["payload"]["annotations"]
+    assert len(annotations) == 2
+    names = {a["name"] for a in annotations}
+    assert names == {"geneA", "promB"}
