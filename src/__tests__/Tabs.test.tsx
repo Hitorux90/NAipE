@@ -8,6 +8,7 @@ describe('Tabs', () => {
     render(<DocumentTabs tabs={[{id:'1',label:'Seq 1'}, {id:'2',label:'Seq 2'}]} activeId="1" onSelect={() => {}} />);
     expect(screen.getByRole('tab', { name: /seq 1/i }).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('tab', { name: /seq 2/i }).getAttribute('aria-selected')).toBe('false');
+    expect(document.querySelectorAll('.doc-tab__close').length).toBeGreaterThanOrEqual(2);
   });
 
   it('ViewTabs renders and highlights active view', () => {

@@ -8,6 +8,8 @@ import type { LucideProps } from 'lucide-react';
 import {
   Dna,
   File,
+  FileText,
+  BookOpen,
   FolderOpen,
   Save,
   Plus,
@@ -37,6 +39,8 @@ import {
 export type IconName =
   | 'dna'
   | 'file'
+  | 'file-text'
+  | 'book-open'
   | 'folder-open'
   | 'save'
   | 'plus'
@@ -57,6 +61,7 @@ export type IconName =
   | 'info'
   | 'loading'
   | 'close'
+  | 'x'
   | 'collapse-left'
   | 'collapse-right';
 
@@ -64,6 +69,8 @@ type IconProps = LucideProps;
 const registry: Record<IconName, ComponentType<IconProps>> = {
   'dna': Dna,
   'file': File,
+  'file-text': FileText,
+  'book-open': BookOpen,
   'folder-open': FolderOpen,
   'save': Save,
   'plus': Plus,
@@ -84,6 +91,7 @@ const registry: Record<IconName, ComponentType<IconProps>> = {
   'info': Info,
   'loading': Loader2,
   'close': X,
+  'x': X,
   'collapse-left': PanelLeftClose,
   'collapse-right': PanelRightClose,
 };

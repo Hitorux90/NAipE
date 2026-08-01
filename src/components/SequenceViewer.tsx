@@ -91,6 +91,54 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
     }
   }
 
+  async function saveDna() {
+    setStatus(null);
+    const current = sequence;
+    if (!current) return;
+    try {
+      const fallback = `C:\\ApE\\src-tauri\\target\\debug\\${encodeURIComponent(current.name)}.dna`;
+      const out = await invoke<string>('save_dna', {
+        sequenceId: Number(current.id),
+        targetPath: fallback,
+      });
+      setStatus(`Saved to ${out}`);
+    } catch (e: any) {
+      setStatus(`Save failed: ${e?.message ?? e}`);
+    }
+  }
+
+  async function saveFasta() {
+    setStatus(null);
+    const current = sequence;
+    if (!current) return;
+    try {
+      const fallback = `C:\\ApE\\src-tauri\\target\\debug\\${encodeURIComponent(current.name)}.fasta`;
+      const out = await invoke<string>('save_as_fasta', {
+        sequenceId: Number(current.id),
+        targetPath: fallback,
+      });
+      setStatus(`Saved to ${out}`);
+    } catch (e: any) {
+      setStatus(`Save failed: ${e?.message ?? e}`);
+    }
+  }
+
+  async function saveGb() {
+    setStatus(null);
+    const current = sequence;
+    if (!current) return;
+    try {
+      const fallback = `C:\\ApE\\src-tauri\\target\\debug\\${encodeURIComponent(current.name)}.gb`;
+      const out = await invoke<string>('save_as_gb', {
+        sequenceId: Number(current.id),
+        targetPath: fallback,
+      });
+      setStatus(`Saved to ${out}`);
+    } catch (e: any) {
+      setStatus(`Save failed: ${e?.message ?? e}`);
+    }
+  }
+
   if (!sequence) {
     return (
       <div className="panel">
@@ -111,62 +159,13 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
         </label>
         <br />
         <textarea className="textarea" value={sequenceText} onChange={(e) => setSequenceText(e.target.value)} rows={12} placeholder="Paste DNA sequence here..." />
-        <br />
-        <button id="new-sequence-btn" className="button button--primary" onClick={createSequence}>New sequence</button>
-        {status && <p>{status}</p>}
+        <hr className="separator" />
+        <div className="button-group">
+          <button id="new-sequence-btn" className="button button--primary" onClick={createSequence}>New sequence</button>
+        </div>
+        {status && <p className="status">{status}</p>}
       </div>
     );
-  }
-
-  async function saveDna() {
-    setStatus(null);
-    const current = sequence;
-    if (!current) return;
-    try {
-      
-      const fallback = `C:\\ApE\\src-tauri\\target\\debug\\${encodeURIComponent(current.name)}.dna`;
-      const out = await invoke<string>('save_dna', {
-        sequenceId: Number(current.id),
-        targetPath: fallback,
-      });
-      setStatus(`Saved to ${out}`);
-    } catch (e: any) {
-      setStatus(`Save failed: ${e?.message ?? e}`);
-    }
-  }
-
-  async function saveFasta() {
-    setStatus(null);
-    const current = sequence;
-    if (!current) return;
-    try {
-      
-      const fallback = `C:\\ApE\\src-tauri\\target\\debug\\${encodeURIComponent(current.name)}.fasta`;
-      const out = await invoke<string>('save_as_fasta', {
-        sequenceId: Number(current.id),
-        targetPath: fallback,
-      });
-      setStatus(`Saved to ${out}`);
-    } catch (e: any) {
-      setStatus(`Save failed: ${e?.message ?? e}`);
-    }
-  }
-
-  async function saveGb() {
-    setStatus(null);
-    const current = sequence;
-    if (!current) return;
-    try {
-      
-      const fallback = `C:\\ApE\\src-tauri\\target\\debug\\${encodeURIComponent(current.name)}.gb`;
-      const out = await invoke<string>('save_as_gb', {
-        sequenceId: Number(current.id),
-        targetPath: fallback,
-      });
-      setStatus(`Saved to ${out}`);
-    } catch (e: any) {
-      setStatus(`Save failed: ${e?.message ?? e}`);
-    }
   }
 
   return (
@@ -182,13 +181,15 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
       Length: {sequence.length_bp} bp | Topology: {sequence.topology}
       <br />
       <textarea className="textarea" value={sequence.sequence} onChange={(e) => onChange({ ...sequence, sequence: e.target.value, length_bp: e.target.value.length })} rows={12} />
-      <br />
-      <button id="undo-btn" className="button button--secondary" onClick={doUndo} disabled={!canUndo}>Undo</button>
-      <button id="redo-btn" className="button button--secondary" onClick={doRedo} disabled={!canRedo}>Redo</button>
-      <button id="save-dna-btn" className="button button--secondary" onClick={saveDna}>Save as .dna</button>
-      <button id="save-fasta-btn" className="button button--secondary" onClick={saveFasta}>Save as .fasta</button>
-      <button id="save-gb-btn" className="button button--secondary" onClick={saveGb}>Save as .gb</button>
-      {status && <p>{status}</p>}
+      <hr className="separator" />
+      <div className="button-group">
+        <button id="undo-btn" className="button button--secondary" onClick={doUndo} disabled={!canUndo}>Undo</button>
+        <button id="redo-btn" className="button button--secondary" onClick={doRedo} disabled={!canRedo}>Redo</button>
+        <button id="save-dna-btn" className="button button--secondary" onClick={saveDna}>Save as .dna</button>
+        <button id="save-fasta-btn" className="button button--secondary" onClick={saveFasta}>Save as .fasta</button>
+        <button id="save-gb-btn" className="button button--secondary" onClick={saveGb}>Save as .gb</button>
+      </div>
+      {status && <p className="status">{status}</p>}
     </div>
   );
 }

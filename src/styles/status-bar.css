@@ -36,9 +36,16 @@
   gap: var(--space-6, 6px);
 }
 
-.status-bar__dot {
+.status-bar__indicator::before {
+  content: '';
   width: var(--space-8, 8px);
   height: var(--space-8, 8px);
   border-radius: 50%;
   background: var(--color-success, #16A34A);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
 }

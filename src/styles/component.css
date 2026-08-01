@@ -126,6 +126,7 @@
 .textarea {
   height: auto;
   padding: var(--space-8, 8px) var(--space-12, 12px);
+  font-family: var(--font-family-sequence, "Fira Code", "Courier New", monospace);
 }
 
 .input:focus,
@@ -228,4 +229,48 @@
   color: var(--color-text-secondary, #6B7280);
   font-size: var(--font-size-base, 13px);
   text-align: center;
+}
+
+/* Scrollbar */
+@media (forced-colors: none) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-subtle, #E5E7EB);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-secondary, #6B7280);
+  }
+}
+
+/* Selection */
+::selection {
+  background: var(--color-primary-accent, #2563EB);
+  color: #FFFFFF;
+}
+
+@media (forced-colors: active) {
+  ::selection {
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
+/* File list active accent */
+.file-item--active {
+  background: var(--color-active-bg, #D1D5DB);
+  border-left: 3px solid var(--color-primary-accent, #2563EB);
+}
+
+.file-item--active:hover {
+  background: #C7CBD2;
 }

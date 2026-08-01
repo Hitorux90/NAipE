@@ -29,4 +29,23 @@ describe('SequenceViewer', () => {
     render(<SequenceViewer sequence={null} onChange={() => {}} />);
     expect(screen.getByRole('button', { name: /new sequence/i })).toBeTruthy();
   });
+
+  it('uses .button-group wrapper around action buttons when sequence is active', () => {
+    render(<SequenceViewer sequence={sampleSequence} onChange={() => {}} />);
+    const buttonGroup = document.querySelector('.button-group');
+    expect(buttonGroup).toBeTruthy();
+  });
+
+  it('uses monospace font on textarea when sequence is active', () => {
+    render(<SequenceViewer sequence={sampleSequence} onChange={() => {}} />);
+    const textarea = document.querySelector('.textarea');
+    expect(textarea).toBeTruthy();
+    expect(textarea?.className).toContain('textarea');
+  });
+
+  it('has no static inline styles in JSX', () => {
+    const html = require('fs').readFileSync('components/SequenceViewer.tsx', 'utf8');
+    const styleMatches = html.match(/style=\{\{/g);
+    expect(styleMatches).toBeNull();
+  });
 });

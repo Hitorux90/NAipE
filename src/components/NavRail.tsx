@@ -17,6 +17,7 @@ export default function NavRail({ items, activeId, onSelect }: Props) {
           <button
             key={item.id}
             className={`nav-rail__item${activeId === item.id ? ' nav-rail__item--active' : ''}`}
+            title={item.label}
             aria-label={item.label}
             aria-pressed={activeId === item.id}
             onClick={() => onSelect(item.id)}

@@ -51,10 +51,14 @@
   background: var(--color-primary-accent, #2563EB);
 }
 
+.nav-rail__item:focus-visible {
+  outline: var(--outline-focus-width, 2px) solid var(--outline-focus-color, #2563EB);
+  outline-offset: var(--outline-focus-offset, -2px);
+}
+
 .nav-rail__label {
   font-size: var(--font-size-xs, 11px);
   line-height: 1;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-
