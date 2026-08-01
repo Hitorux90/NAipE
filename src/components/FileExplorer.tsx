@@ -24,12 +24,10 @@ export default function FileExplorer({ sequences, selectedId, onSelect, onOpenSe
           </li>
         ))}
       </ul>
-      <button id="open-selected-btn" onClick={onOpenSelected} disabled={!hasSelection}>
-        Open selected
+      <button id="open-file-btn" onClick={onOpenSelected}>
+        Open file...
       </button>
-      {!hasSelection && sequences.length > 0 && (
-        <p style={{ color: 'gray' }}>Select a sequence to open.</p>
-      )}
+      <p style={{ fontSize: '0.85em', color: 'gray' }}>Supported: .dna, .fasta, .gb</p>
     </div>
   );
 }
