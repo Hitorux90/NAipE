@@ -94,33 +94,25 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
   if (!sequence) {
     return (
       <div className="panel">
-        <h3>Sequence Viewer</h3>
+        <div className="panel__header">
+          <h3 className="panel__title">Sequence Viewer</h3>
+        </div>
         <label>
           Name:{' '}
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="MySequence"
-          />
+          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="MySequence" />
         </label>
         <br />
         <label>
           Topology:{' '}
-          <select value={topology} onChange={(e) => setTopology(e.target.value)}>
+          <select className="select" value={topology} onChange={(e) => setTopology(e.target.value)}>
             <option value="circular">circular</option>
             <option value="linear">linear</option>
           </select>
         </label>
         <br />
-        <textarea
-          value={sequenceText}
-          onChange={(e) => setSequenceText(e.target.value)}
-          rows={12}
-          placeholder="Paste DNA sequence here..."
-          style={{ width: '100%' }}
-        />
+        <textarea className="textarea" value={sequenceText} onChange={(e) => setSequenceText(e.target.value)} rows={12} placeholder="Paste DNA sequence here..." />
         <br />
-        <button id="new-sequence-btn" onClick={createSequence}>New sequence</button>
+        <button id="new-sequence-btn" className="button button--primary" onClick={createSequence}>New sequence</button>
         {status && <p>{status}</p>}
       </div>
     );
@@ -179,29 +171,23 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
 
   return (
     <div className="panel">
-      <h3>Sequence Viewer</h3>
+      <div className="panel__header">
+        <h3 className="panel__title">Sequence Viewer</h3>
+      </div>
       <label>
         Name:{' '}
-        <input
-          value={sequence.name}
-          onChange={(e) => onChange({ ...sequence, name: e.target.value })}
-        />
+        <input className="input" value={sequence.name} onChange={(e) => onChange({ ...sequence, name: e.target.value })} />
       </label>
       <br />
       Length: {sequence.length_bp} bp | Topology: {sequence.topology}
       <br />
-      <textarea
-        value={sequence.sequence}
-        onChange={(e) => onChange({ ...sequence, sequence: e.target.value, length_bp: e.target.value.length })}
-        rows={12}
-        style={{ width: '100%' }}
-      />
+      <textarea className="textarea" value={sequence.sequence} onChange={(e) => onChange({ ...sequence, sequence: e.target.value, length_bp: e.target.value.length })} rows={12} />
       <br />
-      <button id="undo-btn" onClick={doUndo} disabled={!canUndo}>Undo</button>
-      <button id="redo-btn" onClick={doRedo} disabled={!canRedo}>Redo</button>
-      <button id="save-dna-btn" onClick={saveDna}>Save as .dna</button>
-      <button id="save-fasta-btn" onClick={saveFasta}>Save as .fasta</button>
-      <button id="save-gb-btn" onClick={saveGb}>Save as .gb</button>
+      <button id="undo-btn" className="button button--secondary" onClick={doUndo} disabled={!canUndo}>Undo</button>
+      <button id="redo-btn" className="button button--secondary" onClick={doRedo} disabled={!canRedo}>Redo</button>
+      <button id="save-dna-btn" className="button button--secondary" onClick={saveDna}>Save as .dna</button>
+      <button id="save-fasta-btn" className="button button--secondary" onClick={saveFasta}>Save as .fasta</button>
+      <button id="save-gb-btn" className="button button--secondary" onClick={saveGb}>Save as .gb</button>
       {status && <p>{status}</p>}
     </div>
   );

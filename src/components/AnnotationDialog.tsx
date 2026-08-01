@@ -75,11 +75,11 @@ export default function AnnotationDialog({ open, constructPartId, defaultStart =
         <h4>Add annotation</h4>
         <label>
           Name
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="annotation name" required />
+          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="annotation name" required />
         </label>
         <label>
           Feature type
-          <select value={featureType} onChange={(e) => setFeatureType(e.target.value)}>
+          <select className="select" value={featureType} onChange={(e) => setFeatureType(e.target.value)}>
             <option value="gene">gene</option>
             <option value="promoter">promoter</option>
             <option value="terminator">terminator</option>
@@ -88,15 +88,15 @@ export default function AnnotationDialog({ open, constructPartId, defaultStart =
         </label>
         <label>
           Start
-          <input type="number" value={start} onChange={(e) => setStart(e.target.value)} required />
+          <input className="input" type="number" value={start} onChange={(e) => setStart(e.target.value)} required />
         </label>
         <label>
           End
-          <input type="number" value={end} onChange={(e) => setEnd(e.target.value)} required />
+          <input className="input" type="number" value={end} onChange={(e) => setEnd(e.target.value)} required />
         </label>
         <label>
           Strand
-          <select value={strand} onChange={(e) => setStrand(e.target.value)}>
+          <select className="select" value={strand} onChange={(e) => setStrand(e.target.value)}>
             <option value="1">1</option>
             <option value="-1">-1</option>
           </select>
@@ -107,8 +107,8 @@ export default function AnnotationDialog({ open, constructPartId, defaultStart =
         </label>
         {error && <p className="error">{error}</p>}
         <div className="dialog-actions">
-          <button type="button" onClick={onClose} disabled={saving}>Cancel</button>
-          <button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
+          <button type="button" className="button button--secondary" onClick={onClose} disabled={saving}>Cancel</button>
+          <button type="submit" className="button button--primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
         </div>
       </form>
     </div>

@@ -2,6 +2,9 @@
 import { useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import AnnotationDialog, { Annotation } from './AnnotationDialog';
+import ErrorBanner from './ErrorBanner';
+import LoadingSpinner from './LoadingSpinner';
+import EmptyState from './EmptyState';
 
 type ConstructPart = {
   id: string;
@@ -112,21 +115,26 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
 
   return (
     <div className="panel construct-editor">
-      <h3>Assembly Editor</h3>
-      {error && <p className="error">{error}</p>}
+      <div className="panel__header">
+        <h3 className="panel__title">Assembly Editor</h3>
+      </div>
+      {error && <ErrorBanner message={error} />}
       {saveMsg && <p className="status">{saveMsg}</p>}
       <div
         className="construct-canvas"
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
       >
-        {loading && <p>Loading parts...</p>}
-        {!loading && parts.length === 0 && <p className="empty-state">Drop parts here</p>}
+        {loading && <LoadingSpinner />}
+        {!loading && parts.length === 0 && <EmptyState message="Drop parts here" />}
         {parts.map((p) => (
           <div
             key={p.id}
             className="construct-part-tile"
-            style={{ backgroundColor: p.color ?? '#888', order: p.order }}
+            style={{
+              '--part-color': p.color ?? '#888',
+              '--part-order': p.order,
+            } as React.CSSProperties}
             onClick={() => handlePartClick(p.id)}
           >
             <span className="part-label">{p.part_id}</span>
@@ -136,10 +144,10 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
                 key={a.id}
                 className="annotation-overlay"
                 style={{
-                  backgroundColor: a.color ?? '#ff0000',
-                  left: `${((a.start - p.start) / (p.end - p.start || 1)) * 100}%`,
-                  width: `${((a.end - a.start) / (p.end - p.start || 1)) * 100}%`,
-                }}
+                  '--anno-bg': a.color ?? '#ff0000',
+                  '--anno-left': `${((a.start - p.start) / (p.end - p.start || 1)) * 100}%`,
+                  '--anno-width': `${((a.end - a.start) / (p.end - p.start || 1)) * 100}%`,
+                } as React.CSSProperties}
                 title={`${a.name}: ${a.feature_type} ${a.start}-${a.end}`}
               />
             ))}
@@ -148,7 +156,7 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
       </div>
       {constructId && (
         <div className="construct-actions">
-          <button onClick={handleSave} disabled={saving || loading}>
+          <button className="button button--secondary" onClick={handleSave} disabled={saving || loading}>
             {saving ? 'Saving...' : 'Save'}
           </button>
         </div>

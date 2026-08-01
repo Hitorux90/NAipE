@@ -51,7 +51,9 @@ export default function PartsLibrary({ parts: externalParts, onAddToConstruct }:
 
   return (
     <div className="panel">
-      <h3>Parts Library</h3>
+      <div className="panel__header">
+        <h3 className="panel__title">Parts Library</h3>
+      </div>
       <ul className="parts-list">
         {parts.map((p, idx) => (
           <li
