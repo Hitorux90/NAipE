@@ -16,7 +16,7 @@ export default function CanvasToolPalette({ tools, activeId, onSelect }: Props) 
         return (
           <button
             key={tool.id}
-            className={`tool-palette__item${activeId === tool.id ? ' tool-palette__item--active' : ''}`}
+            className={`tool-palette__item button button--ghost${activeId === tool.id ? ' tool-palette__item--active' : ''}`}
             aria-label={tool.label}
             aria-pressed={activeId === tool.id}
             onClick={() => onSelect(tool.id)}

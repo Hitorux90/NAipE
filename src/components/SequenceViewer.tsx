@@ -1,6 +1,8 @@
 // src/components/SequenceViewer.tsx
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { getIcon } from '../utils/icons';
+import { Dna, FileText, BookOpen } from 'lucide-react';
 
 type Sequence = { id: string; name: string; sequence: string; length_bp: number; topology: string };
 interface Props {
@@ -183,11 +185,9 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
       <textarea className="textarea" value={sequence.sequence} onChange={(e) => onChange({ ...sequence, sequence: e.target.value, length_bp: e.target.value.length })} rows={12} />
       <hr className="separator" />
       <div className="button-group">
-        <button id="undo-btn" className="button button--secondary" onClick={doUndo} disabled={!canUndo}>Undo</button>
-        <button id="redo-btn" className="button button--secondary" onClick={doRedo} disabled={!canRedo}>Redo</button>
-        <button id="save-dna-btn" className="button button--secondary" onClick={saveDna}>Save as .dna</button>
-        <button id="save-fasta-btn" className="button button--secondary" onClick={saveFasta}>Save as .fasta</button>
-        <button id="save-gb-btn" className="button button--secondary" onClick={saveGb}>Save as .gb</button>
+        <button id="save-dna-btn" className="button button--secondary" onClick={saveDna}><Dna size={16} /> Save as .dna</button>
+        <button id="save-fasta-btn" className="button button--secondary" onClick={saveFasta}><FileText size={16} /> Save as .fasta</button>
+        <button id="save-gb-btn" className="button button--secondary" onClick={saveGb}><BookOpen size={16} /> Save as .gb</button>
       </div>
       {status && <p className="status">{status}</p>}
     </div>
