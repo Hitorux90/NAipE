@@ -1,8 +1,13 @@
 //! Rust unit tests for sequence-level database commands.
 //! These tests exercise sequence create/list/save/open helpers
 //! against an in-memory SQLite database via sqlx.
+//!
+//! Note: After Phase 2 audit, format-specific I/O for DNA/FASTA/GenBank
+//! was moved from Rust to the Python sidecar. The Rust-side file helpers
+//! `load_sequence_from_file` and `save_gb_to_file` were removed.
+//! Format round-trip coverage now lives in Python sidecar tests.
 
-use apetauri_lib::{create_sequence, fetch_sequences};
+use apetauri_lib::{inner_create_sequence, fetch_sequences};
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 
 fn memory_url() -> String {
@@ -50,7 +55,7 @@ async fn test_new_sequence_persists() {
     let p = pool().await;
     seed_schema(&p).await;
 
-    let seq = create_sequence(&p, "TestSeq", "ATGC", "circular")
+    let seq = inner_create_sequence(&p, "TestSeq", "ATGC", "circular")
         .await
         .expect("insert sequence");
 
@@ -65,10 +70,10 @@ async fn test_list_sequences_returns_inserted() {
     let p = pool().await;
     seed_schema(&p).await;
 
-    create_sequence(&p, "A", "ATGC", "circular")
+    inner_create_sequence(&p, "A", "ATGC", "circular")
         .await
         .unwrap();
-    create_sequence(&p, "B", "AAAA", "linear")
+    inner_create_sequence(&p, "B", "AAAA", "linear")
         .await
         .unwrap();
 
@@ -84,7 +89,7 @@ async fn test_save_dna_writes_json_file() {
     let p = pool().await;
     seed_schema(&p).await;
 
-    let seq = create_sequence(&p, "SaveTest", "ATGC", "circular")
+    let seq = inner_create_sequence(&p, "SaveTest", "ATGC", "circular")
         .await
         .unwrap();
 
@@ -101,35 +106,11 @@ async fn test_save_dna_writes_json_file() {
 }
 
 #[tokio::test]
-async fn test_open_dna_round_trip() {
-    let p = pool().await;
-    seed_schema(&p).await;
-
-    let seq = create_sequence(&p, "RoundTrip", "ATGC", "circular")
-        .await
-        .unwrap();
-
-    let tmp = std::env::temp_dir().join(format!("naipeopen_{}.dna", seq.id));
-    apetauri_lib::save_dna_to_file(&p, seq.id, &tmp)
-        .await
-        .unwrap();
-
-    let loaded = apetauri_lib::load_sequence_from_file(&tmp)
-        .await
-        .expect("open dna");
-
-    assert_eq!(loaded.name, "RoundTrip");
-    assert_eq!(loaded.sequence, "ATGC");
-    assert_eq!(loaded.topology, "circular");
-    std::fs::remove_file(&tmp).ok();
-}
-
-#[tokio::test]
 async fn test_open_fasta_round_trip() {
     let p = pool().await;
     seed_schema(&p).await;
 
-    let seq = create_sequence(&p, "FastaTest", "AAAA", "linear")
+    let seq = inner_create_sequence(&p, "FastaTest", "AAAA", "linear")
         .await
         .unwrap();
 
@@ -138,12 +119,8 @@ async fn test_open_fasta_round_trip() {
         .await
         .unwrap();
 
-    let loaded = apetauri_lib::load_sequence_from_file(&tmp)
-        .await
-        .expect("open fasta");
-
-    assert_eq!(loaded.name, "FastaTest");
-    assert_eq!(loaded.sequence, "AAAA");
-    assert_eq!(loaded.topology, "linear");
+    let content = std::fs::read_to_string(&tmp).expect("read fasta");
+    assert!(content.starts_with(">FastaTest"));
+    assert!(content.contains("AAAA"));
     std::fs::remove_file(&tmp).ok();
 }

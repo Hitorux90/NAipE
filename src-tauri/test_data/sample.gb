@@ -1,0 +1,13 @@
+LOCUS       sample_gb            50 bp    DNA     circular     2026-08-01
+ACCESSION   SAMPLE_001
+VERSION     SAMPLE_001.1
+KEYWORDS    .
+SOURCE      synthetic
+  ORGANISM  synthetic
+            .
+FEATURES             Location/Qualifiers
+     misc_feature    1..20
+                     /note="sample feature"
+ORIGIN      
+        1 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac
+//

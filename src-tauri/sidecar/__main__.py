@@ -9,6 +9,18 @@ import os
 import sys
 
 
+def _find_db_path() -> str:
+    candidates = []
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidates.append(os.path.join(here, "target", "debug", "ape.db"))
+    candidates.append(os.path.join(here, "..", "target", "debug", "ape.db"))
+    candidates.append(os.path.join(here, "..", "..", "target", "debug", "ape.db"))
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return os.path.abspath(candidate)
+    return ""
+
+
 def main() -> None:
     for raw_line in sys.stdin:
         line = raw_line.strip()
@@ -24,7 +36,7 @@ def main() -> None:
                         "id": None,
                         "type": "response",
                         "command": None,
-                        "payload": {"error": f"parse error: {exc}"},
+                        "payload": {"error": "INVALID_REQUEST", "message": "parse error: {}".format(exc)},
                         "ok": False,
                     }
                 ),
@@ -39,7 +51,7 @@ def main() -> None:
                         "id": None,
                         "type": "response",
                         "command": None,
-                        "payload": {"error": "expected object"},
+                        "payload": {"error": "INVALID_REQUEST", "message": "expected object"},
                         "ok": False,
                     }
                 ),
@@ -59,7 +71,7 @@ def main() -> None:
                         "id": msg_id,
                         "type": "response",
                         "command": cmd,
-                        "payload": {"error": "expected request with command"},
+                        "payload": {"error": "INVALID_REQUEST", "message": "expected request with command"},
                         "ok": False,
                     }
                 ),
@@ -91,14 +103,14 @@ def _handle_command(cmd, msg_id, payload):
             "ok": True,
         }
 
-    if cmd == "new_sequence":
+    if cmd == "create_sequence":
         name = payload.get("name", "unnamed")
         sequence = payload.get("sequence", "")
         topology = payload.get("topology", "circular")
         return {
             "id": msg_id,
             "type": "response",
-            "command": "new_sequence",
+            "command": "create_sequence",
             "payload": {
                 "name": name,
                 "sequence": sequence,
@@ -108,10 +120,16 @@ def _handle_command(cmd, msg_id, payload):
             "ok": True,
         }
 
-    if cmd == "save_dna":
+    if cmd == "new_sequence":
+        response = _handle_command("create_sequence", msg_id, payload)
+        response["command"] = "new_sequence"
+        response.setdefault("payload", {})["deprecated"] = True
+        return response
+
+    if cmd == "save_as_dna":
         target_path = payload.get("target_path")
         if not target_path:
-            return _error(msg_id, cmd, "missing target_path")
+            return _error(msg_id, cmd, "INVALID_REQUEST", "missing target_path")
         try:
             text = json.dumps(payload, indent=2)
             os.makedirs(os.path.dirname(target_path) or ".", exist_ok=True)
@@ -120,95 +138,165 @@ def _handle_command(cmd, msg_id, payload):
             return {
                 "id": msg_id,
                 "type": "response",
-                "command": "save_dna",
+                "command": "save_as_dna",
                 "payload": {"path": target_path},
                 "ok": True,
             }
         except OSError as exc:
-            return _error(msg_id, cmd, str(exc))
+            return _error(msg_id, cmd, "PERMISSION_DENIED", str(exc))
 
-    if cmd == "save_fasta":
+    if cmd == "save_dna":
+        response = _handle_command("save_as_dna", msg_id, payload)
+        response["command"] = "save_dna"
+        response.setdefault("payload", {})["deprecated"] = True
+        return response
+
+    if cmd == "save_as_fasta":
         target_path = payload.get("target_path")
         name = payload.get("name", "unnamed")
         sequence = payload.get("sequence", "")
         topology = payload.get("topology", "circular")
         if not target_path:
-            return _error(msg_id, cmd, "missing target_path")
+            return _error(msg_id, cmd, "INVALID_REQUEST", "missing target_path")
         try:
-            header = f">{name} length={len(sequence)} topology={topology}"
-            text = f"{header}\n{sequence}\n"
+            header = ">{} length={} topology={}".format(name, len(sequence), topology)
+            text = "{}\n{}\n".format(header, sequence)
             os.makedirs(os.path.dirname(target_path) or ".", exist_ok=True)
             with open(target_path, "w", encoding="utf-8") as fh:
                 fh.write(text)
             return {
                 "id": msg_id,
                 "type": "response",
-                "command": "save_fasta",
+                "command": "save_as_fasta",
                 "payload": {"path": target_path},
                 "ok": True,
             }
         except OSError as exc:
-            return _error(msg_id, cmd, str(exc))
+            return _error(msg_id, cmd, "PERMISSION_DENIED", str(exc))
+
+    if cmd == "save_fasta":
+        response = _handle_command("save_as_fasta", msg_id, payload)
+        response["command"] = "save_fasta"
+        response.setdefault("payload", {})["deprecated"] = True
+        return response
+
+    if cmd == "save_as_gb":
+        target_path = payload.get("target_path")
+        name = payload.get("name", "unnamed")
+        sequence = payload.get("sequence", "")
+        topology = payload.get("topology", "circular")
+        if not target_path:
+            return _error(msg_id, cmd, "INVALID_REQUEST", "missing target_path")
+        try:
+            from sidecar.adapters.gb import write_gb
+            data = {
+                "locus": name,
+                "sequence": sequence,
+                "topology": topology,
+                "length_bp": len(sequence),
+                "features": payload.get("features", []),
+            }
+            write_gb(target_path, data)
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "save_as_gb",
+                "payload": {"path": target_path},
+                "ok": True,
+            }
+        except (OSError, ValueError) as exc:
+            return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
 
     if cmd == "open_file":
         target_path = payload.get("target_path")
         if not target_path:
-            return _error(msg_id, cmd, "missing target_path")
+            return _error(msg_id, cmd, "INVALID_REQUEST", "missing target_path")
         try:
-            with open(target_path, "r", encoding="utf-8") as fh:
-                text = fh.read()
-            ext = os.path.splitext(target_path)[1].lower().lstrip(".")
-            if ext == "dna":
-                data = json.loads(text)
-                return {
-                    "id": msg_id,
-                    "type": "response",
-                    "command": "open_file",
-                    "payload": {
-                        "name": data.get("name", "unnamed"),
-                        "sequence": data.get("sequence", ""),
-                        "topology": data.get("topology", "circular"),
-                        "length_bp": data.get("length_bp", 0),
-                    },
-                    "ok": True,
-                }
-            if ext == "fasta":
-                lines = text.splitlines()
-                header = lines[0] if lines else ""
-                name = header.lstrip(">").split()[0] if header.startswith(">") else "unnamed"
-                sequence = "".join(line.strip() for line in lines[1:] if line.strip())
-                topology = "circular" if "topology=circular" in header else "linear"
-                return {
-                    "id": msg_id,
-                    "type": "response",
-                    "command": "open_file",
-                    "payload": {
-                        "name": name,
-                        "sequence": sequence,
-                        "topology": topology,
-                        "length_bp": len(sequence),
-                    },
-                    "ok": True,
-                }
-            return _error(msg_id, cmd, f"unsupported extension: {ext}")
+            from sidecar.adapters import read_format
+            data = read_format(target_path)
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "open_file",
+                "payload": {
+                    "name": data.get("name", "unnamed"),
+                    "sequence": data.get("sequence", ""),
+                    "topology": data.get("topology", "circular"),
+                    "length_bp": data.get("length_bp", 0),
+                    "deprecated": True,
+                },
+                "ok": True,
+            }
+        except ValueError as exc:
+            return _error(msg_id, cmd, "INVALID_REQUEST", str(exc))
         except OSError as exc:
-            return _error(msg_id, cmd, str(exc))
+            return _error(msg_id, cmd, "FILE_NOT_FOUND", str(exc))
+
+    if cmd == "open_sequence":
+        payload["target_path"] = payload.get("target_path")
+        response = _handle_command("open_file", msg_id, payload)
+        response["command"] = "open_sequence"
+        response.setdefault("payload", {})["deprecated"] = False
+        return response
+
+    if cmd == "list_sequences":
+        db_path = payload.get("db_path") or _find_db_path()
+        if not db_path or not os.path.exists(db_path):
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "list_sequences",
+                "payload": {"sequences": []},
+                "ok": True,
+            }
+        try:
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute("SELECT id, name, topology, length_bp, created_at_ms FROM sequences")
+            rows = cur.fetchall()
+            sequences = []
+            for row in rows:
+                sequences.append({
+                    "id": row["id"],
+                    "name": row["name"],
+                    "topology": row["topology"],
+                    "length_bp": row["length_bp"],
+                    "created_at_ms": row["created_at_ms"],
+                })
+            conn.close()
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "list_sequences",
+                "payload": {"sequences": sequences},
+                "ok": True,
+            }
+        except Exception as exc:
+            return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
+
+    if cmd == "undo":
+        return _error(msg_id, cmd, "UNKNOWN_COMMAND", "undo requires Rust-owned stack; not exposed via sidecar yet")
+
+    if cmd == "redo":
+        return _error(msg_id, cmd, "UNKNOWN_COMMAND", "redo requires Rust-owned stack; not exposed via sidecar yet")
 
     return {
         "id": msg_id,
         "type": "response",
         "command": cmd,
-        "payload": {"error": f"unknown command: {cmd}"},
+        "payload": {"error": "UNKNOWN_COMMAND", "message": "unknown command: {}".format(cmd)},
         "ok": False,
     }
 
 
-def _error(msg_id, cmd, message):
+def _error(msg_id, cmd, code, message):
     return {
         "id": msg_id,
         "type": "response",
         "command": cmd,
-        "payload": {"error": message},
+        "payload": {"error": code, "message": message},
         "ok": False,
     }
 
