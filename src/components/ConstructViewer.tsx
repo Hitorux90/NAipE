@@ -1,5 +1,6 @@
 // src/components/ConstructViewer.tsx
 import { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 
 type ConstructPart = {
   id: string;
@@ -34,7 +35,7 @@ export default function ConstructViewer({ constructId }: Props) {
       setError(null);
       setConstruct(null);
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
+        
         const c = await invoke<Construct>('open_construct', { constructId: Number(constructId) });
         if (!cancelled) setConstruct(c);
       } catch (e: any) {

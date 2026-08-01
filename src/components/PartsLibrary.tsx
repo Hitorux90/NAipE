@@ -1,5 +1,6 @@
 // src/components/PartsLibrary.tsx
 import { useState, useEffect, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 
 type Part = { id: string; name: string; category?: string; length_bp?: number };
 interface Props {
@@ -16,7 +17,7 @@ export default function PartsLibrary({ parts: externalParts, onAddToConstruct }:
     async function load() {
       if (externalParts) return;
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
+        
         const items = await invoke<Part[]>('get_parts');
         if (!cancelled) setParts(items ?? []);
       } catch {

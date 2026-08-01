@@ -1,5 +1,6 @@
 // src/components/AssemblyCanvas.tsx
 import { useState, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import AnnotationDialog, { Annotation } from './AnnotationDialog';
 
 type ConstructPart = {
@@ -35,7 +36,6 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
       const ps = await invoke<ConstructPart[]>('list_construct_parts', { constructId: Number(constructId) });
       const parts = ps ?? [];
       setParts(parts.map((p) => ({ ...p, annotations: [] })));
@@ -48,7 +48,6 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
 
   const loadAnnotations = useCallback(async (partId: string) => {
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
       const annotations = await invoke<Annotation[]>('list_annotations', { constructPartId: Number(partId) });
       setAnnotationsByPart((prev) => ({ ...prev, [partId]: annotations ?? [] }));
       setParts((prev) => prev.map((p) => (p.id === partId ? { ...p, annotations: annotations ?? [] } : p)));
@@ -76,7 +75,6 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
     if (!constructId) return;
     setError(null);
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
       const start = parts.reduce((max, p) => Math.max(max, p.end), 0);
       await invoke('add_part_to_construct', {
         constructId: Number(constructId),
@@ -100,7 +98,6 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
     setSaving(true);
     setError(null);
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
       const target = `C:\\ApE\\src-tauri\\target\\debug\\construct_${constructId}.dna`;
       await invoke('save_construct', { constructId: Number(constructId), targetPath: target });
       setSaveMsg('Saved');
