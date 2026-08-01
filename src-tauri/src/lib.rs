@@ -6,17 +6,21 @@
 
 pub mod db;
 pub mod sidecar;
+pub mod undo;
 
 use db::schema::run_schema;
 use db::seed::{load_default_parts, seed_if_empty};
 use db::DbPool;
 use db::models::{Part, Sequence};
-use sidecar::{SidecarConfig, SidecarManager};
+use sidecar::{SidecarConfig, SidecarManager, SidecarRequest, SidecarResponse};
 use std::path::PathBuf;
 use tauri::Manager;
 use chrono::Utc;
+use std::sync::Mutex;
+use undo::{UndoManager, UndoEntry};
+use uuid::Uuid;
 
-pub async fn create_sequence(
+pub async fn inner_create_sequence(
     pool: &DbPool,
     name: &str,
     sequence: &str,
@@ -51,7 +55,7 @@ pub async fn save_dna_to_file(
         .fetch_one(pool)
         .await?;
 
-    let dna = serde_json::json!({
+    let text = serde_json::to_string_pretty(&serde_json::json!({
         "version": "0.1",
         "format": "NAipE-dna",
         "name": seq.name,
@@ -60,9 +64,8 @@ pub async fn save_dna_to_file(
         "topology": seq.topology,
         "created_at_ms": seq.created_at_ms,
         "parts": []
-    });
+    }))?;
 
-    let text = serde_json::to_string_pretty(&dna)?;
     std::fs::write(target_path, text)?;
     Ok(target_path.to_path_buf())
 }
@@ -83,46 +86,37 @@ pub async fn save_fasta_to_file(
     Ok(target_path.to_path_buf())
 }
 
-pub async fn load_sequence_from_file(
-    path: &std::path::Path,
-) -> anyhow::Result<Sequence> {
-    let ext = path
-        .extension()
-        .and_then(|s| s.to_str())
-        .map(|s| s.to_lowercase())
-        .unwrap_or_default();
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct SidecarError {
+    error: String,
+    message: String,
+}
 
-    let raw = std::fs::read_to_string(path)?;
+async fn send_sidecar_request(
+    state: &tauri::State<'_, SidecarManager>,
+    command: &str,
+    payload: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    let manager = state.inner();
+    let req = SidecarRequest::new(Uuid::new_v4(), command)
+        .with_payload(payload)
+        .with_timestamp_ms(Utc::now().timestamp_millis());
 
-    match ext.as_str() {
-        "dna" => {
-            let v: serde_json::Value = serde_json::from_str(&raw)?;
-            Ok(Sequence {
-                id: 0,
-                name: v["name"].as_str().unwrap_or("unnamed").to_string(),
-                sequence: v["sequence"].as_str().unwrap_or_default().to_string(),
-                topology: v["topology"].as_str().unwrap_or("circular").to_string(),
-                length_bp: v["length_bp"].as_i64().unwrap_or_default(),
-                created_at_ms: v["created_at_ms"].as_i64().unwrap_or_default(),
-            })
+    match manager.send_request(req).await {
+        Ok(SidecarResponse { ok: true, result, .. }) => {
+            result.ok_or_else(|| "INTERNAL_ERROR|empty sidecar response".to_string())
         }
-        "fasta" => {
-            let mut lines = raw.lines();
-            let header = lines.next().unwrap_or_default();
-            let name = header.trim_start_matches('>').split_whitespace().next().unwrap_or("unnamed").to_string();
-            let seq = lines.collect::<Vec<_>>().join("");
-            let topology = if header.contains("topology=circular") { "circular" } else { "linear" };
-            let length_bp = seq.len() as i64;
-            Ok(Sequence {
-                id: 0,
-                name,
-                sequence: seq,
-                topology: topology.to_string(),
-                length_bp,
-                created_at_ms: 0,
-            })
+        Ok(SidecarResponse { ok: false, result, .. }) => {
+            let detail = result.unwrap_or_default();
+            if let Some(code) = detail.get("error").and_then(|v| v.as_str()) {
+                if let Some(msg) = detail.get("message").and_then(|v| v.as_str()) {
+                    return Err(format!("{}|{}", code, msg));
+                }
+                return Err(code.to_string());
+            }
+            Err("INTERNAL_ERROR|sidecar returned ok=false without error code".to_string())
         }
-        _ => anyhow::bail!("unsupported extension: {}", ext),
+        Err(io_err) => Err(format!("IO_ERROR|{}", io_err)),
     }
 }
 
@@ -202,21 +196,22 @@ pub fn run() {
                 )
                 .await;
 
-                match sidecar_result {
-                    Ok(manager) => {
-                        app.manage(pool);
-                        app.manage(manager);
-                    }
+                let sidecar_manager = match sidecar_result {
+                    Ok(manager) => manager,
                     Err(err) => {
                         eprintln!("[ApE] failed to start sidecar: {err}");
-                        app.manage(pool);
+                        return Ok(());
                     }
-                }
+                };
+
+                app.manage(pool);
+                app.manage(sidecar_manager);
+                app.manage(Mutex::new(UndoManager::new()));
 
                 Ok(())
             })
         })
-        .invoke_handler(tauri::generate_handler![greet, get_parts, new_sequence, list_sequences, save_dna, save_fasta, open_file])
+        .invoke_handler(tauri::generate_handler![greet, get_parts, create_sequence, new_sequence, list_sequences, save_dna, save_fasta, open_file, save_as_dna, save_as_fasta, save_as_gb, open_sequence, undo, redo])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -231,7 +226,19 @@ async fn get_parts(state: tauri::State<'_, DbPool>) -> Result<Vec<Part>, String>
     sqlx::query_as::<_, Part>(db::models::PartQueries::ALL)
         .fetch_all(&*state)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("DB_ERROR|{}", e))
+}
+
+#[tauri::command]
+async fn create_sequence(
+    state: tauri::State<'_, DbPool>,
+    name: String,
+    sequence: String,
+    topology: String,
+) -> Result<Sequence, String> {
+    inner_create_sequence(&*state, &name, &sequence, &topology)
+        .await
+        .map_err(|e| format!("DB_ERROR|{}", e))
 }
 
 #[tauri::command]
@@ -241,22 +248,9 @@ async fn new_sequence(
     sequence: String,
     topology: String,
 ) -> Result<Sequence, String> {
-    let now_ms = Utc::now().timestamp_millis();
-    let length_bp = sequence.len() as i64;
-
-    let row = sqlx::query_as::<_, Sequence>(
-        db::models::SequenceQueries::INSERT,
-    )
-    .bind(&name)
-    .bind(&sequence)
-    .bind(&topology)
-    .bind(length_bp)
-    .bind(now_ms)
-    .fetch_one(&*state)
-    .await
-    .map_err(|e| e.to_string())?;
-
-    Ok(row)
+    inner_create_sequence(&*state, &name, &sequence, &topology)
+        .await
+        .map_err(|e| format!("DB_ERROR|{}", e))
 }
 
 #[tauri::command]
@@ -264,7 +258,7 @@ async fn list_sequences(state: tauri::State<'_, DbPool>) -> Result<Vec<Sequence>
     sqlx::query_as::<_, Sequence>(db::models::SequenceQueries::ALL)
         .fetch_all(&*state)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("DB_ERROR|{}", e))
 }
 
 #[tauri::command]
@@ -278,7 +272,7 @@ async fn save_dna(
     save_dna_to_file(&*state, sequence_id, path)
         .await
         .map(|p| p.to_string_lossy().to_string())
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("IO_ERROR|{}", e))
 }
 
 #[tauri::command]
@@ -292,21 +286,102 @@ async fn save_fasta(
     save_fasta_to_file(&*state, sequence_id, path)
         .await
         .map(|p| p.to_string_lossy().to_string())
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("IO_ERROR|{}", e))
 }
 
 #[tauri::command]
 async fn open_file(
-    state: tauri::State<'_, DbPool>,
+    sidecar: tauri::State<'_, SidecarManager>,
     target_path: String,
 ) -> Result<Sequence, String> {
+    open_sequence(sidecar, target_path).await
+}
+
+#[tauri::command]
+async fn save_as_dna(
+    state: tauri::State<'_, DbPool>,
+    sequence_id: i64,
+    target_path: String,
+) -> Result<String, String> {
     use std::path::Path;
     let path = Path::new(&target_path);
-    let mut seq = load_sequence_from_file(path).await.map_err(|e| e.to_string())?;
-    if seq.id == 0 {
-        seq = create_sequence(&*state, &seq.name, &seq.sequence, &seq.topology)
-            .await
-            .map_err(|e| e.to_string())?;
-    }
-    Ok(seq)
+    save_dna_to_file(&*state, sequence_id, path)
+        .await
+        .map(|p| p.to_string_lossy().to_string())
+        .map_err(|e| format!("IO_ERROR|{}", e))
+}
+
+#[tauri::command]
+async fn save_as_fasta(
+    state: tauri::State<'_, DbPool>,
+    sequence_id: i64,
+    target_path: String,
+) -> Result<String, String> {
+    use std::path::Path;
+    let path = Path::new(&target_path);
+    save_fasta_to_file(&*state, sequence_id, path)
+        .await
+        .map(|p| p.to_string_lossy().to_string())
+        .map_err(|e| format!("IO_ERROR|{}", e))
+}
+
+#[tauri::command]
+async fn save_as_gb(
+    pool: tauri::State<'_, DbPool>,
+    sidecar: tauri::State<'_, SidecarManager>,
+    sequence_id: i64,
+    target_path: String,
+) -> Result<String, String> {
+    let seq = sqlx::query_as::<_, Sequence>(db::models::SequenceQueries::BY_ID)
+        .bind(sequence_id)
+        .fetch_one(&*pool)
+        .await
+        .map_err(|e| format!("DB_ERROR|{}", e))?;
+
+    let payload = serde_json::json!({
+        "name": seq.name,
+        "sequence": seq.sequence,
+        "topology": seq.topology,
+        "length_bp": seq.length_bp,
+        "target_path": target_path,
+    });
+
+    let result = send_sidecar_request(&sidecar, "save_as_gb", payload).await?;
+    Ok(result.get("path").and_then(|v| v.as_str()).unwrap_or(&target_path).to_string())
+}
+
+#[tauri::command]
+async fn open_sequence(
+    sidecar: tauri::State<'_, SidecarManager>,
+    target_path: String,
+) -> Result<Sequence, String> {
+    let payload = serde_json::json!({"target_path": target_path});
+    let result = send_sidecar_request(&sidecar, "open_sequence", payload).await?;
+
+    Ok(Sequence {
+        id: 0,
+        name: result.get("name").and_then(|v| v.as_str()).unwrap_or("unnamed").to_string(),
+        sequence: result.get("sequence").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+        topology: result.get("topology").and_then(|v| v.as_str()).unwrap_or("circular").to_string(),
+        length_bp: result.get("length_bp").and_then(|v| v.as_i64()).unwrap_or_default(),
+        created_at_ms: 0,
+    })
+}
+
+#[tauri::command]
+async fn undo(
+    state: tauri::State<'_, Mutex<UndoManager>>,
+    sequence_id: i64,
+) -> Result<Option<UndoEntry>, String> {
+    let mut manager = state.lock().map_err(|e| format!("LOCK_ERROR|{}", e))?;
+    Ok(manager.undo(sequence_id))
+}
+
+#[tauri::command]
+async fn redo(
+    state: tauri::State<'_, Mutex<UndoManager>>,
+    sequence_id: i64,
+) -> Result<Option<UndoEntry>, String> {
+    let mut manager = state.lock().map_err(|e| format!("LOCK_ERROR|{}", e))?;
+    Ok(manager.redo(sequence_id))
 }

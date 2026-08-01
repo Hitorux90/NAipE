@@ -20,7 +20,16 @@ export default function App() {
   return (
     <div style={{ display: 'flex', height: '100vh' }}>
       <div style={{ width: '20%', borderRight: '1px solid #ccc' }}>
-        <FileExplorer sequences={sequences} onSelect={selectSequence} />
+        <FileExplorer
+          sequences={sequences}
+          selectedId={activeId}
+          onSelect={selectSequence}
+          onOpenSelected={() => {
+            // TODO: open_sequence needs a stored file path per sequence;
+            // current list view does not carry one.
+            window.alert('Open selected sequence: file path wiring pending.');
+          }}
+        />
       </div>
       <div style={{ width: '55%' }}>
         <SequenceViewer sequence={activeSequence} onChange={(u) => setActiveSequence(u)} />

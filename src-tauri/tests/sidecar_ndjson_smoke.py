@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 
@@ -162,7 +163,7 @@ def test_unknown_command(sidecar_proc):
     assert resp["id"] == msg_id
     assert resp["type"] == "response"
     assert resp["ok"] is False
-    assert "unknown command" in resp["payload"]["error"]
+    assert resp["payload"]["error"] == "UNKNOWN_COMMAND"
 
 
 def test_malformed_json(sidecar_proc):
@@ -171,4 +172,238 @@ def test_malformed_json(sidecar_proc):
     resp = read(sidecar_proc)
     assert resp is not None
     assert resp["ok"] is False
-    assert "parse error" in resp["payload"]["error"]
+    assert resp["payload"]["error"] == "INVALID_REQUEST"
+
+
+def test_create_sequence(sidecar_proc):
+    msg_id = "test-create-seq"
+    send(
+        sidecar_proc,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "create_sequence",
+            "payload": {"name": "sidecar_seq", "sequence": "ATGC", "topology": "circular"},
+        },
+    )
+    resp = read(sidecar_proc)
+    assert resp is not None
+    assert resp["id"] == msg_id
+    assert resp["type"] == "response"
+    assert resp["command"] == "create_sequence"
+    assert resp["ok"] is True
+    assert resp["payload"]["name"] == "sidecar_seq"
+    assert resp["payload"]["length_bp"] == 4
+
+
+def test_save_as_dna(sidecar_proc):
+    msg_id = "test-save-as-dna"
+    target = r"C:\ApE\src-tauri\target\debug\saved_as_seq.dna"
+    send(
+        sidecar_proc,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "save_as_dna",
+            "payload": {"name": "saved_as_seq", "sequence": "ATGC", "target_path": target},
+        },
+    )
+    resp = read(sidecar_proc)
+    assert resp is not None
+    assert resp["id"] == msg_id
+    assert resp["type"] == "response"
+    assert resp["command"] == "save_as_dna"
+    assert resp["ok"] is True
+    assert os.path.exists(target)
+    os.remove(target)
+
+
+def test_save_as_fasta(sidecar_proc):
+    msg_id = "test-save-as-fasta"
+    target = r"C:\ApE\src-tauri\target\debug\saved_as_seq.fasta"
+    send(
+        sidecar_proc,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "save_as_fasta",
+            "payload": {"name": "saved_fasta", "sequence": "AAAA", "target_path": target},
+        },
+    )
+    resp = read(sidecar_proc)
+    assert resp is not None
+    assert resp["id"] == msg_id
+    assert resp["type"] == "response"
+    assert resp["command"] == "save_as_fasta"
+    assert resp["ok"] is True
+    assert os.path.exists(target)
+    os.remove(target)
+
+
+def test_save_as_gb(sidecar_proc):
+    msg_id = "test-save-as-gb"
+    target = r"C:\ApE\src-tauri\target\debug\saved_as_seq.gb"
+    send(
+        sidecar_proc,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "save_as_gb",
+            "payload": {"name": "saved_gb", "sequence": "ACGT", "target_path": target},
+        },
+    )
+    resp = read(sidecar_proc)
+    assert resp is not None
+    assert resp["id"] == msg_id
+    assert resp["type"] == "response"
+    assert resp["command"] == "save_as_gb"
+    assert resp["ok"] is True
+    assert os.path.exists(target)
+    os.remove(target)
+
+
+def test_open_sequence(sidecar_proc):
+    msg_id = "test-open-sequence"
+    target = r"C:\ApE\src-tauri\target\debug\saved_as_seq.dna"
+    send(
+        sidecar_proc,
+        {
+            "id": "prep-save-dna",
+            "type": "request",
+            "command": "save_as_dna",
+            "payload": {"name": "open_target", "sequence": "GCTA", "target_path": target},
+        },
+    )
+    prep = read(sidecar_proc)
+    assert prep["ok"] is True
+
+    send(
+        sidecar_proc,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "open_sequence",
+            "payload": {"target_path": target},
+        },
+    )
+    resp = read(sidecar_proc)
+    assert resp is not None
+    assert resp["id"] == msg_id
+    assert resp["type"] == "response"
+    assert resp["command"] == "open_sequence"
+    assert resp["ok"] is True
+    assert resp["payload"]["name"] == "open_target"
+    os.remove(target)
+
+
+def test_list_sequences(sidecar_proc):
+    msg_id = "test-list-sequences"
+    send(
+        sidecar_proc,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "list_sequences",
+            "payload": {},
+        },
+    )
+    resp = read(sidecar_proc)
+    assert resp is not None
+    assert resp["id"] == msg_id
+    assert resp["type"] == "response"
+    assert resp["command"] == "list_sequences"
+    assert resp["ok"] is True
+    assert "sequences" in resp["payload"]
+
+
+def test_deprecated_new_sequence(sidecar_proc):
+    msg_id = "test-deprecated-new"
+    send(
+        sidecar_proc,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "new_sequence",
+            "payload": {"name": "dep_seq", "sequence": "NNNN"},
+        },
+    )
+    resp = read(sidecar_proc)
+    assert resp is not None
+    assert resp["command"] == "new_sequence"
+    assert resp["ok"] is True
+    assert resp["payload"].get("deprecated") is True
+
+
+def test_deprecated_save_dna(sidecar_proc):
+    msg_id = "test-deprecated-save-dna"
+    target = r"C:\ApE\src-tauri\target\debug\dep_save.dna"
+    send(
+        sidecar_proc,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "save_dna",
+            "payload": {"name": "dep", "sequence": "N", "target_path": target},
+        },
+    )
+    resp = read(sidecar_proc)
+    assert resp is not None
+    assert resp["command"] == "save_dna"
+    assert resp["ok"] is True
+    assert resp["payload"].get("deprecated") is True
+    if os.path.exists(target):
+        os.remove(target)
+
+
+def test_deprecated_save_fasta(sidecar_proc):
+    msg_id = "test-deprecated-save-fasta"
+    target = r"C:\ApE\src-tauri\target\debug\dep_save.fasta"
+    send(
+        sidecar_proc,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "save_fasta",
+            "payload": {"name": "dep", "sequence": "N", "target_path": target},
+        },
+    )
+    resp = read(sidecar_proc)
+    assert resp is not None
+    assert resp["command"] == "save_fasta"
+    assert resp["ok"] is True
+    assert resp["payload"].get("deprecated") is True
+    if os.path.exists(target):
+        os.remove(target)
+
+
+def test_deprecated_open_file(sidecar_proc):
+    msg_id = "test-deprecated-open"
+    target = r"C:\ApE\src-tauri\target\debug\dep_open.dna"
+    send(
+        sidecar_proc,
+        {
+            "id": "prep-dep-open",
+            "type": "request",
+            "command": "save_as_dna",
+            "payload": {"name": "dep_open", "sequence": "GGG", "target_path": target},
+        },
+    )
+    prep = read(sidecar_proc)
+    assert prep["ok"] is True
+
+    send(
+        sidecar_proc,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "open_file",
+            "payload": {"target_path": target},
+        },
+    )
+    resp = read(sidecar_proc)
+    assert resp is not None
+    assert resp["command"] == "open_file"
+    assert resp["ok"] is True
+    assert resp["payload"]["name"] == "dep_open"
+    assert resp["payload"].get("deprecated") is True
+    os.remove(target)
