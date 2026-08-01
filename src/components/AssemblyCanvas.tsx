@@ -1,4 +1,4 @@
-// src/components/ConstructEditor.tsx
+// src/components/AssemblyCanvas.tsx
 import { useState, useCallback } from 'react';
 
 type ConstructPart = {
@@ -16,7 +16,7 @@ interface Props {
   onSave?: () => void;
 }
 
-export default function ConstructEditor({ constructId, onSave }: Props) {
+export default function AssemblyCanvas({ constructId, onSave }: Props) {
   const [parts, setParts] = useState<ConstructPart[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);

@@ -235,7 +235,7 @@ pub fn run() {
                 Ok(())
             })
         })
-        .invoke_handler(tauri::generate_handler![greet, get_parts, create_sequence, new_sequence, list_sequences, save_dna, save_fasta, open_file, save_as_dna, save_as_fasta, save_as_gb, open_sequence, create_construct, add_part_to_construct, save_construct, list_constructs, open_construct, undo, redo])
+        .invoke_handler(tauri::generate_handler![greet, get_parts, create_sequence, new_sequence, list_sequences, save_dna, save_fasta, open_file, save_as_dna, save_as_fasta, save_as_gb, open_sequence, create_construct, add_part_to_construct, save_construct, list_constructs, open_construct, create_annotation, list_annotations, undo, redo])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -500,6 +500,56 @@ pub async fn db_list_constructs(pool: &DbPool) -> sqlx::Result<Vec<serde_json::V
         })
 }
 
+pub async fn db_create_annotation(
+    pool: &DbPool,
+    construct_part_id: i64,
+    name: String,
+    feature_type: String,
+    start: i64,
+    end: i64,
+    strand: i64,
+    color: Option<String>,
+) -> sqlx::Result<i64> {
+    let now_ms = Utc::now().timestamp_millis();
+    sqlx::query("INSERT INTO Construct_Annotations (construct_part_id, name, feature_type, start, end, strand, color, created_at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+        .bind(construct_part_id)
+        .bind(&name)
+        .bind(&feature_type)
+        .bind(start)
+        .bind(end)
+        .bind(strand)
+        .bind(&color)
+        .bind(now_ms)
+        .execute(pool)
+        .await
+        .map(|r| r.last_insert_rowid())
+}
+
+pub async fn db_list_annotations(
+    pool: &DbPool,
+    construct_part_id: i64,
+) -> sqlx::Result<Vec<serde_json::Value>> {
+    sqlx::query("SELECT id, construct_part_id, name, feature_type, start, end, strand, color, created_at_ms FROM Construct_Annotations WHERE construct_part_id = ?")
+        .bind(construct_part_id)
+        .fetch_all(pool)
+        .await
+        .map(|rows| {
+            rows.into_iter().map(|row| {
+                serde_json::json!({
+                    "id": row.get::<i64, _>("id"),
+                    "construct_part_id": row.get::<i64, _>("construct_part_id"),
+                    "name": row.get::<String, _>("name"),
+                    "feature_type": row.get::<String, _>("feature_type"),
+                    "start": row.get::<i64, _>("start"),
+                    "end": row.get::<i64, _>("end"),
+                    "strand": row.get::<i64, _>("strand"),
+                    "color": row.get::<Option<String>, _>("color"),
+                    "created_at_ms": row.get::<i64, _>("created_at_ms"),
+                })
+            }).collect()
+        })
+}
+
 pub async fn db_open_construct(pool: &DbPool, construct_id: i64) -> anyhow::Result<serde_json::Value> {
     let row = sqlx::query("SELECT name, sequence_id, created_at_ms FROM Constructs WHERE id = ?")
         .bind(construct_id)
@@ -593,6 +643,32 @@ async fn open_construct(
     construct_id: i64,
 ) -> Result<serde_json::Value, SidecarError> {
     db_open_construct(&*state, construct_id)
+        .await
+        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+}
+
+#[tauri::command]
+async fn create_annotation(
+    state: tauri::State<'_, DbPool>,
+    construct_part_id: i64,
+    name: String,
+    feature_type: String,
+    start: i64,
+    end: i64,
+    strand: i64,
+    color: Option<String>,
+) -> Result<i64, SidecarError> {
+    db_create_annotation(&*state, construct_part_id, name, feature_type, start, end, strand, color)
+        .await
+        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+}
+
+#[tauri::command]
+async fn list_annotations(
+    state: tauri::State<'_, DbPool>,
+    construct_part_id: i64,
+) -> Result<Vec<serde_json::Value>, SidecarError> {
+    db_list_annotations(&*state, construct_part_id)
         .await
         .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
 }

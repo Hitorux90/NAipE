@@ -93,6 +93,20 @@ CREATE TABLE IF NOT EXISTS Construct_Parts (
 );
 "#;
 
+pub const CREATE_CONSTRUCT_ANNOTATIONS: &str = r#"
+CREATE TABLE IF NOT EXISTS Construct_Annotations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    construct_part_id INTEGER NOT NULL REFERENCES Construct_Parts(id),
+    name TEXT NOT NULL,
+    feature_type TEXT NOT NULL,
+    start INTEGER NOT NULL,
+    end INTEGER NOT NULL,
+    strand INTEGER NOT NULL CHECK(strand IN (-1,1)),
+    color TEXT,
+    created_at_ms INTEGER NOT NULL
+);
+"#;
+
 /// Apply the full SQLite schema (tables + immutability triggers).
 pub async fn run_schema(conn: &mut SqliteConnection) -> sqlx::Result<()> {
     sqlx::query(CREATE_SEQUENCES)
@@ -117,6 +131,9 @@ pub async fn run_schema(conn: &mut SqliteConnection) -> sqlx::Result<()> {
         .execute(&mut *conn)
         .await?;
     sqlx::query(CREATE_CONSTRUCT_PARTS)
+        .execute(&mut *conn)
+        .await?;
+    sqlx::query(CREATE_CONSTRUCT_ANNOTATIONS)
         .execute(&mut *conn)
         .await?;
     Ok(())
