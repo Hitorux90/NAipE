@@ -475,6 +475,80 @@ def _handle_command(cmd, msg_id, payload):
         except Exception as exc:
             return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
 
+    if cmd == "create_annotation":
+        db_path = payload.get("db_path") or _find_db_path()
+        if not db_path or not os.path.exists(db_path):
+            return _error(msg_id, cmd, "INTERNAL_ERROR", "database not found")
+        try:
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO Construct_Annotations (construct_part_id, name, feature_type, start, end, strand, color, created_at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    payload.get("construct_part_id"),
+                    payload.get("name", ""),
+                    payload.get("feature_type", ""),
+                    payload.get("start", 0),
+                    payload.get("end", 0),
+                    payload.get("strand", 1),
+                    payload.get("color"),
+                    __import__("time").time() * 1000,
+                ),
+            )
+            conn.commit()
+            annotation_id = cur.lastrowid
+            conn.close()
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "create_annotation",
+                "payload": {"id": annotation_id},
+                "ok": True,
+            }
+        except Exception as exc:
+            return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
+
+    if cmd == "list_annotations":
+        db_path = payload.get("db_path") or _find_db_path()
+        construct_part_id = payload.get("construct_part_id")
+        if not db_path or not os.path.exists(db_path):
+            return _error(msg_id, cmd, "INTERNAL_ERROR", "database not found")
+        if construct_part_id is None:
+            return _error(msg_id, cmd, "INVALID_REQUEST", "missing construct_part_id")
+        try:
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT id, construct_part_id, name, feature_type, start, end, strand, color, created_at_ms FROM Construct_Annotations WHERE construct_part_id = ?",
+                (construct_part_id,),
+            )
+            annotations = []
+            for row in cur.fetchall():
+                annotations.append({
+                    "id": row["id"],
+                    "construct_part_id": row["construct_part_id"],
+                    "name": row["name"],
+                    "feature_type": row["feature_type"],
+                    "start": row["start"],
+                    "end": row["end"],
+                    "strand": row["strand"],
+                    "color": row["color"],
+                    "created_at_ms": row["created_at_ms"],
+                })
+            conn.close()
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "list_annotations",
+                "payload": {"annotations": annotations},
+                "ok": True,
+            }
+        except Exception as exc:
+            return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
+
     if cmd == "undo":
         return _error(msg_id, cmd, "UNKNOWN_COMMAND", "undo requires Rust-owned stack; not exposed via sidecar yet")
 

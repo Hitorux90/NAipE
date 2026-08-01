@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import ConstructEditor from '../components/ConstructEditor';
+import AssemblyCanvas from '../components/AssemblyCanvas';
 
 const mockInvoke = vi.fn().mockResolvedValue([]);
 
@@ -8,14 +8,14 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: (...args: any[]) => mockInvoke(...args),
 }));
 
-describe('ConstructEditor', () => {
+describe('AssemblyCanvas', () => {
   it('shows empty state when no constructId', () => {
-    render(<ConstructEditor />);
+    render(<AssemblyCanvas />);
     expect(screen.getByText(/Drop parts here/i)).toBeDefined();
   });
 
-  it('renders construct editor with save button when constructId is provided', async () => {
-    render(<ConstructEditor constructId={1} />);
+  it('renders assembly canvas with save button when constructId is provided', async () => {
+    render(<AssemblyCanvas constructId={1} />);
     expect(screen.getByText('Assembly Editor')).toBeDefined();
     expect(screen.getByRole('button', { name: /save/i })).toBeDefined();
   });

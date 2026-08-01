@@ -266,6 +266,73 @@ async fn test_open_construct_returns_parts() {
 }
 
 #[tokio::test]
+async fn test_create_annotation_command_persists() {
+    let p = pool().await;
+    seed_schema(&p).await;
+
+    let seq = apetauri_lib::inner_create_sequence(&p, "AnnotSeq".into(), "ATGC".into(), "linear")
+        .await
+        .expect("create seq");
+    let construct_id = apetauri_lib::db_create_construct(&p, "AnnotConstruct".into(), seq.id)
+        .await
+        .expect("create construct");
+    let part_id = apetauri_lib::db_add_part_to_construct(&p, construct_id, "p001".into(), 0, 10, 1, Some("#888".into()), 0)
+        .await
+        .expect("add part");
+
+    let annotation_id = apetauri_lib::db_create_annotation(&p, part_id, "geneA".into(), "gene".into(), 0, 10, 1, Some("#ff0000".into()))
+        .await
+        .expect("create annotation");
+
+    let rows = sqlx::query("SELECT id, construct_part_id, name, feature_type, start, end, strand, color, created_at_ms FROM Construct_Annotations")
+        .fetch_all(&p)
+        .await
+        .expect("fetch annotations");
+
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].get::<i64, _>("id"), annotation_id);
+    assert_eq!(rows[0].get::<i64, _>("construct_part_id"), part_id);
+    assert_eq!(rows[0].get::<String, _>("name"), "geneA");
+    assert_eq!(rows[0].get::<String, _>("feature_type"), "gene");
+    assert_eq!(rows[0].get::<i64, _>("start"), 0);
+    assert_eq!(rows[0].get::<i64, _>("end"), 10);
+    assert_eq!(rows[0].get::<i64, _>("strand"), 1);
+    assert_eq!(rows[0].get::<Option<String>, _>("color"), Some("#ff0000".into()));
+}
+
+#[tokio::test]
+async fn test_list_annotations_command_returns_inserted() {
+    let p = pool().await;
+    seed_schema(&p).await;
+
+    let seq = apetauri_lib::inner_create_sequence(&p, "AnnotListSeq".into(), "ATGC".into(), "linear")
+        .await
+        .expect("create seq");
+    let construct_id = apetauri_lib::db_create_construct(&p, "AnnotListConstruct".into(), seq.id)
+        .await
+        .expect("create construct");
+    let part_id = apetauri_lib::db_add_part_to_construct(&p, construct_id, "p001".into(), 0, 10, 1, Some("#888".into()), 0)
+        .await
+        .expect("add part");
+
+    apetauri_lib::db_create_annotation(&p, part_id, "geneA".into(), "gene".into(), 0, 10, 1, Some("#ff0000".into()))
+        .await
+        .unwrap();
+    apetauri_lib::db_create_annotation(&p, part_id, "promB".into(), "promoter".into(), 0, 5, 1, Some("#00ff00".into()))
+        .await
+        .unwrap();
+
+    let annotations = apetauri_lib::db_list_annotations(&p, part_id)
+        .await
+        .expect("list annotations");
+
+    assert_eq!(annotations.len(), 2);
+    let names: Vec<&str> = annotations.iter().filter_map(|a| a.get("name").and_then(|v| v.as_str())).collect();
+    assert!(names.contains(&"geneA"));
+    assert!(names.contains(&"promB"));
+}
+
+#[tokio::test]
 async fn test_list_constructs_command_returns_inserted() {
     let p = pool().await;
     seed_schema(&p).await;
