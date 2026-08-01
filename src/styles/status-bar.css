@@ -11,7 +11,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
+  padding: 0 var(--space-12, 12px);
   font-size: var(--font-size-ui-small, 12px);
   color: var(--color-text-secondary, #6B7280);
 }
@@ -20,7 +20,7 @@
 .status-bar__right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-12, 12px);
   min-width: 0;
 }
 
@@ -33,12 +33,12 @@
 .status-bar__indicator {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-6, 6px);
 }
 
 .status-bar__dot {
-  width: 8px;
-  height: 8px;
+  width: var(--space-8, 8px);
+  height: var(--space-8, 8px);
   border-radius: 50%;
   background: var(--color-success, #16A34A);
 }

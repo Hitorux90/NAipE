@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import FileExplorer from '../components/FileExplorer';
 import SequenceViewer from '../components/SequenceViewer';
 import PartsLibrary from '../components/PartsLibrary';
+import NavRail from '../components/NavRail';
+import StatusBar from '../components/StatusBar';
 
 type Sequence = { id: string; name: string; sequence: string; length_bp: number; topology: string };
 
@@ -67,7 +69,7 @@ export default function App() {
         onChange={handleFileChange}
       />
       <aside className="layout__rail" data-testid="nav-rail">
-        {/* NavRail placeholder for 1b.6 */}
+        <NavRail items={[{id:'sequences',icon:'dna',label:'DNA'},{id:'constructs',icon:'library',label:'Parts'}]} activeId="sequences" onSelect={() => {}} />
       </aside>
       <aside className="layout__sidebar--left">
         <FileExplorer
@@ -84,7 +86,7 @@ export default function App() {
         <PartsLibrary parts={parts} />
       </aside>
       <footer className="layout__status-bar" data-testid="status-bar">
-        {/* StatusBar placeholder for 1b.7 */}
+        <StatusBar message="Ready" />
       </footer>
     </div>
   );
