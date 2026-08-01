@@ -1,0 +1,79 @@
+/* ============================================================
+   NAipE — Tabs (Fase 1b)
+   Document tabs and view tabs.
+   ============================================================ */
+
+.doc-tabs {
+  display: flex;
+  height: var(--layout-tab-height, 36px);
+  background: var(--color-bg-sidebar, #F9FAFB);
+  border-bottom: 1px solid var(--color-border-subtle, #E5E7EB);
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 2px;
+  padding: 0 8px;
+}
+
+.doc-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 100%;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: var(--color-text-secondary, #6B7280);
+  font-size: var(--font-size-ui-small, 12px);
+  white-space: nowrap;
+  cursor: pointer;
+  max-width: 200px;
+}
+
+.doc-tab:hover {
+  background: var(--color-hover-bg, #E5E7EB);
+}
+
+.doc-tab--active {
+  background: var(--color-bg-canvas, #FFFFFF);
+  color: var(--color-text-primary, #111827);
+  font-weight: 600;
+  border: 1px solid var(--color-border-subtle, #E5E7EB);
+  border-bottom-color: var(--color-bg-canvas, #FFFFFF);
+}
+
+.doc-tab__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.view-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--color-bg-canvas, #FFFFFF);
+}
+
+.view-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-secondary, #6B7280);
+  font-size: var(--font-size-ui-small, 12px);
+  cursor: pointer;
+}
+
+.view-tab:hover {
+  background: var(--color-hover-bg, #E5E7EB);
+}
+
+.view-tab--active {
+  background: var(--color-bg-sidebar, #F9FAFB);
+  color: var(--color-text-primary, #111827);
+  border-color: var(--color-border-subtle, #E5E7EB);
+}
