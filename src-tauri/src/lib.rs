@@ -235,7 +235,7 @@ pub fn run() {
                 Ok(())
             })
         })
-        .invoke_handler(tauri::generate_handler![greet, get_parts, create_sequence, new_sequence, list_sequences, save_dna, save_fasta, open_file, save_as_dna, save_as_fasta, save_as_gb, open_sequence, create_construct, add_part_to_construct, save_construct, list_constructs, undo, redo])
+        .invoke_handler(tauri::generate_handler![greet, get_parts, create_sequence, new_sequence, list_sequences, save_dna, save_fasta, open_file, save_as_dna, save_as_fasta, save_as_gb, open_sequence, create_construct, add_part_to_construct, save_construct, list_constructs, open_construct, undo, redo])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -500,6 +500,46 @@ pub async fn db_list_constructs(pool: &DbPool) -> sqlx::Result<Vec<serde_json::V
         })
 }
 
+pub async fn db_open_construct(pool: &DbPool, construct_id: i64) -> anyhow::Result<serde_json::Value> {
+    let row = sqlx::query("SELECT name, sequence_id, created_at_ms FROM Constructs WHERE id = ?")
+        .bind(construct_id)
+        .fetch_optional(pool)
+        .await?;
+
+    let (name, sequence_id, created_at_ms) = row.map(|r| {
+        (
+            r.get::<String, _>("name"),
+            r.get::<i64, _>("sequence_id"),
+            r.get::<i64, _>("created_at_ms"),
+        )
+    }).unwrap_or(("unnamed".into(), 0, 0));
+
+    let parts = sqlx::query(r#"SELECT part_id, start, end, strand, color, "order" FROM Construct_Parts WHERE construct_id = ? ORDER BY "order""#)
+        .bind(construct_id)
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .map(|row| {
+            serde_json::json!({
+                "part_id": row.get::<String, _>("part_id"),
+                "start": row.get::<i64, _>("start"),
+                "end": row.get::<i64, _>("end"),
+                "strand": row.get::<i64, _>("strand"),
+                "color": row.get::<Option<String>, _>("color"),
+                "order": row.get::<i64, _>("order"),
+            })
+        })
+        .collect::<Vec<serde_json::Value>>();
+
+    Ok(serde_json::json!({
+        "id": construct_id,
+        "name": name,
+        "sequence_id": sequence_id,
+        "created_at_ms": created_at_ms,
+        "parts": parts,
+    }))
+}
+
 #[tauri::command]
 async fn create_construct(
     state: tauri::State<'_, DbPool>,
@@ -543,6 +583,16 @@ async fn list_constructs(
     state: tauri::State<'_, DbPool>,
 ) -> Result<Vec<serde_json::Value>, SidecarError> {
     db_list_constructs(&*state)
+        .await
+        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+}
+
+#[tauri::command]
+async fn open_construct(
+    state: tauri::State<'_, DbPool>,
+    construct_id: i64,
+) -> Result<serde_json::Value, SidecarError> {
+    db_open_construct(&*state, construct_id)
         .await
         .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
 }

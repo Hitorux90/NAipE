@@ -233,6 +233,39 @@ async fn test_save_construct_command_writes_file() {
 }
 
 #[tokio::test]
+async fn test_open_construct_returns_parts() {
+    let p = pool().await;
+    seed_schema(&p).await;
+
+    let seq = apetauri_lib::inner_create_sequence(&p, "OpenSeq".into(), "ATGC".into(), "linear")
+        .await
+        .expect("create seq");
+    let construct_id = apetauri_lib::db_create_construct(&p, "OpenConstruct".into(), seq.id)
+        .await
+        .expect("create construct");
+
+    apetauri_lib::db_add_part_to_construct(&p, construct_id, "p001".into(), 0, 20, 1, Some("#4caf50".into()), 0)
+        .await
+        .expect("add part 1");
+    apetauri_lib::db_add_part_to_construct(&p, construct_id, "p002".into(), 20, 29, 1, Some("#2196f3".into()), 1)
+        .await
+        .expect("add part 2");
+
+    let opened = apetauri_lib::db_open_construct(&p, construct_id)
+        .await
+        .expect("open construct");
+
+    assert_eq!(opened.get("name").and_then(|v| v.as_str()), Some("OpenConstruct"));
+    let parts = opened.get("parts").and_then(|v| v.as_array()).expect("parts array");
+    assert_eq!(parts.len(), 2);
+    assert_eq!(parts[0].get("part_id").and_then(|v| v.as_str()), Some("p001"));
+    assert_eq!(parts[0].get("start").and_then(|v| v.as_i64()), Some(0));
+    assert_eq!(parts[0].get("end").and_then(|v| v.as_i64()), Some(20));
+    assert_eq!(parts[1].get("part_id").and_then(|v| v.as_str()), Some("p002"));
+    assert_eq!(parts[1].get("order").and_then(|v| v.as_i64()), Some(1));
+}
+
+#[tokio::test]
 async fn test_list_constructs_command_returns_inserted() {
     let p = pool().await;
     seed_schema(&p).await;
