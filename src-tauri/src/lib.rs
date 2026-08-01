@@ -13,6 +13,7 @@ use db::seed::{load_default_parts, seed_if_empty};
 use db::DbPool;
 use db::models::{Part, Sequence};
 use sidecar::{SidecarConfig, SidecarManager, SidecarRequest, SidecarResponse};
+use sqlx::Row;
 use std::path::PathBuf;
 use tauri::Manager;
 use chrono::Utc;
@@ -234,7 +235,7 @@ pub fn run() {
                 Ok(())
             })
         })
-        .invoke_handler(tauri::generate_handler![greet, get_parts, create_sequence, new_sequence, list_sequences, save_dna, save_fasta, open_file, save_as_dna, save_as_fasta, save_as_gb, open_sequence, undo, redo])
+        .invoke_handler(tauri::generate_handler![greet, get_parts, create_sequence, new_sequence, list_sequences, save_dna, save_fasta, open_file, save_as_dna, save_as_fasta, save_as_gb, open_sequence, create_construct, add_part_to_construct, save_construct, list_constructs, undo, redo])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -394,12 +395,164 @@ async fn open_sequence(
     })
 }
 
+pub async fn db_create_construct(
+    pool: &DbPool,
+    name: String,
+    sequence_id: i64,
+) -> sqlx::Result<i64> {
+    let now_ms = Utc::now().timestamp_millis();
+    sqlx::query("INSERT INTO Constructs (name, sequence_id, created_at_ms) VALUES (?, ?, ?)")
+        .bind(&name)
+        .bind(sequence_id)
+        .bind(now_ms)
+        .execute(pool)
+        .await
+        .map(|r| r.last_insert_rowid())
+}
+
+pub async fn db_add_part_to_construct(
+    pool: &DbPool,
+    construct_id: i64,
+    part_id: String,
+    start: i64,
+    end: i64,
+    strand: i64,
+    color: Option<String>,
+    order: i64,
+) -> sqlx::Result<i64> {
+    let now_ms = Utc::now().timestamp_millis();
+    sqlx::query(r#"INSERT INTO Construct_Parts (construct_id, part_id, start, end, strand, color, "order", created_at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"#)
+        .bind(construct_id)
+        .bind(&part_id)
+        .bind(start)
+        .bind(end)
+        .bind(strand)
+        .bind(&color)
+        .bind(order)
+        .bind(now_ms)
+        .execute(pool)
+        .await
+        .map(|r| r.last_insert_rowid())
+}
+
+pub async fn db_save_construct(
+    pool: &DbPool,
+    construct_id: i64,
+    target_path: String,
+) -> anyhow::Result<String> {
+    let row = sqlx::query("SELECT name, sequence_id, created_at_ms FROM Constructs WHERE id = ?")
+        .bind(construct_id)
+        .fetch_optional(pool)
+        .await?;
+
+    let (name, sequence_id, _created_at_ms) = row.map(|r| {
+        (
+            r.get::<String, _>("name"),
+            r.get::<i64, _>("sequence_id"),
+            r.get::<i64, _>("created_at_ms"),
+        )
+    }).unwrap_or(("unnamed".into(), 0, 0));
+
+    let parts: Vec<serde_json::Value> = sqlx::query(r#"SELECT part_id, start, end, strand, color, "order" FROM Construct_Parts WHERE construct_id = ? ORDER BY "order""#)
+        .bind(construct_id)
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .map(|row| {
+            serde_json::json!({
+                "part_id": row.get::<String, _>("part_id"),
+                "start": row.get::<i64, _>("start"),
+                "end": row.get::<i64, _>("end"),
+                "strand": row.get::<i64, _>("strand"),
+                "color": row.get::<Option<String>, _>("color"),
+                "order": row.get::<i64, _>("order"),
+            })
+        })
+        .collect();
+
+    let data = serde_json::json!({
+        "name": name,
+        "construct_id": construct_id,
+        "sequence_id": sequence_id,
+        "parts": parts,
+    });
+
+    use std::path::Path;
+    let path = Path::new(&target_path);
+    std::fs::create_dir_all(path.parent().unwrap_or(path)).ok();
+    std::fs::write(path, serde_json::to_string_pretty(&data)?)?;
+
+    Ok(target_path)
+}
+
+pub async fn db_list_constructs(pool: &DbPool) -> sqlx::Result<Vec<serde_json::Value>> {
+    sqlx::query("SELECT id, name, sequence_id, created_at_ms FROM Constructs")
+        .fetch_all(pool)
+        .await
+        .map(|rows| {
+            rows.into_iter().map(|row| {
+                let id: i64 = row.get("id");
+                let name: String = row.get("name");
+                let sequence_id: i64 = row.get("sequence_id");
+                let created_at_ms: i64 = row.get("created_at_ms");
+                serde_json::json!({"id": id, "name": name, "sequence_id": sequence_id, "created_at_ms": created_at_ms})
+            }).collect()
+        })
+}
+
+#[tauri::command]
+async fn create_construct(
+    state: tauri::State<'_, DbPool>,
+    name: String,
+    sequence_id: i64,
+) -> Result<i64, SidecarError> {
+    db_create_construct(&*state, name, sequence_id)
+        .await
+        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+}
+
+#[tauri::command]
+async fn add_part_to_construct(
+    state: tauri::State<'_, DbPool>,
+    construct_id: i64,
+    part_id: String,
+    start: i64,
+    end: i64,
+    strand: i64,
+    color: Option<String>,
+    order: i64,
+) -> Result<i64, SidecarError> {
+    db_add_part_to_construct(&*state, construct_id, part_id, start, end, strand, color, order)
+        .await
+        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+}
+
+#[tauri::command]
+async fn save_construct(
+    pool: tauri::State<'_, DbPool>,
+    construct_id: i64,
+    target_path: String,
+) -> Result<String, SidecarError> {
+    db_save_construct(&*pool, construct_id, target_path)
+        .await
+        .map_err(|e| SidecarError { error: "IO_ERROR".into(), message: e.to_string() })
+}
+
+#[tauri::command]
+async fn list_constructs(
+    state: tauri::State<'_, DbPool>,
+) -> Result<Vec<serde_json::Value>, SidecarError> {
+    db_list_constructs(&*state)
+        .await
+        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+}
+
 #[tauri::command]
 async fn undo(
     state: tauri::State<'_, Mutex<UndoManager>>,
     sequence_id: i64,
-) -> Result<Option<UndoEntry>, String> {
-    let mut manager = state.lock().map_err(|e| format!("LOCK_ERROR|{}", e))?;
+) -> Result<Option<UndoEntry>, SidecarError> {
+    let mut manager = state.lock().map_err(|e| SidecarError { error: "LOCK_ERROR".into(), message: e.to_string() })?;
     Ok(manager.undo(sequence_id))
 }
 
@@ -407,7 +560,7 @@ async fn undo(
 async fn redo(
     state: tauri::State<'_, Mutex<UndoManager>>,
     sequence_id: i64,
-) -> Result<Option<UndoEntry>, String> {
-    let mut manager = state.lock().map_err(|e| format!("LOCK_ERROR|{}", e))?;
+) -> Result<Option<UndoEntry>, SidecarError> {
+    let mut manager = state.lock().map_err(|e| SidecarError { error: "LOCK_ERROR".into(), message: e.to_string() })?;
     Ok(manager.redo(sequence_id))
 }

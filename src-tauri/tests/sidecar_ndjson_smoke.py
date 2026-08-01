@@ -47,6 +47,61 @@ def sidecar_proc():
             proc.kill()
 
 
+@pytest.fixture()
+def sidecar_proc_with_db(tmp_path):
+    db_path = tmp_path / "ape.db"
+    import sqlite3
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS Constructs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            sequence_id INTEGER,
+            created_at_ms INTEGER NOT NULL
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS Construct_Parts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            construct_id INTEGER NOT NULL,
+            part_id TEXT NOT NULL,
+            start INTEGER NOT NULL,
+            end INTEGER NOT NULL,
+            strand INTEGER NOT NULL,
+            color TEXT,
+            "order" INTEGER NOT NULL,
+            created_at_ms INTEGER NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+    import os
+    old_cwd = os.getcwd()
+    os.chdir(r"C:\ApE\src-tauri")
+    target_dir = os.path.join(r"C:\ApE\src-tauri", "target", "debug")
+    os.makedirs(target_dir, exist_ok=True)
+    test_db_path = os.path.join(target_dir, "ape.db")
+    import shutil
+    shutil.copy(db_path, test_db_path)
+    os.chdir(old_cwd)
+
+    proc = spawn_sidecar()
+    try:
+        yield proc
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        try:
+            os.remove(test_db_path)
+        except OSError:
+            pass
+
+
 def test_ping(sidecar_proc):
     msg_id = "test-ping-1"
     send(sidecar_proc, {"id": msg_id, "type": "request", "command": "ping", "payload": {}})
@@ -407,3 +462,113 @@ def test_deprecated_open_file(sidecar_proc):
     assert resp["payload"]["name"] == "dep_open"
     assert resp["payload"].get("deprecated") is True
     os.remove(target)
+
+
+def test_create_construct(sidecar_proc_with_db):
+    msg_id = "test-create-construct"
+    send(
+        sidecar_proc_with_db,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "create_construct",
+            "payload": {"name": "MyConstruct", "sequence_id": 1},
+        },
+    )
+    resp = read(sidecar_proc_with_db)
+    assert resp is not None
+    assert resp["id"] == msg_id
+    assert resp["type"] == "response"
+    assert resp["command"] == "create_construct"
+    assert resp["ok"] is True
+    assert resp["payload"]["name"] == "MyConstruct"
+    assert "id" in resp["payload"]
+
+
+def test_add_part_to_construct(sidecar_proc_with_db):
+    create_id = "test-add-part-create"
+    send(
+        sidecar_proc_with_db,
+        {
+            "id": create_id,
+            "type": "request",
+            "command": "create_construct",
+            "payload": {"name": "PartConstruct", "sequence_id": 1},
+        },
+    )
+    create_resp = read(sidecar_proc_with_db)
+    assert create_resp["ok"] is True
+    construct_id = create_resp["payload"]["id"]
+
+    msg_id = "test-add-part"
+    send(
+        sidecar_proc_with_db,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "add_part_to_construct",
+            "payload": {
+                "construct_id": construct_id,
+                "part_id": "p001",
+                "start": 0,
+                "end": 100,
+                "strand": 1,
+                "color": "#ff0000",
+                "order": 0,
+            },
+        },
+    )
+    resp = read(sidecar_proc_with_db)
+    assert resp is not None
+    assert resp["ok"] is True
+    assert "id" in resp["payload"]
+
+
+def test_save_construct(sidecar_proc_with_db):
+    create_id = "test-save-construct-create"
+    send(
+        sidecar_proc_with_db,
+        {
+            "id": create_id,
+            "type": "request",
+            "command": "create_construct",
+            "payload": {"name": "SaveConstruct", "sequence_id": 1},
+        },
+    )
+    create_resp = read(sidecar_proc_with_db)
+    assert create_resp["ok"] is True
+    construct_id = create_resp["payload"]["id"]
+
+    msg_id = "test-save-construct"
+    target = r"C:\ApE\src-tauri\target\debug\construct.dna"
+    send(
+        sidecar_proc_with_db,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "save_construct",
+            "payload": {"construct_id": construct_id, "target_path": target},
+        },
+    )
+    resp = read(sidecar_proc_with_db)
+    assert resp is not None
+    assert resp["ok"] is True
+    assert os.path.exists(target)
+    os.remove(target)
+
+
+def test_list_constructs(sidecar_proc):
+    msg_id = "test-list-constructs"
+    send(
+        sidecar_proc,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "list_constructs",
+            "payload": {},
+        },
+    )
+    resp = read(sidecar_proc)
+    assert resp is not None
+    assert resp["ok"] is True
+    assert "constructs" in resp["payload"]
