@@ -269,6 +269,9 @@ async fn save_dna(
 ) -> Result<String, String> {
     use std::path::Path;
     let path = Path::new(&target_path);
+    if sequence_id == 0 {
+        return Err("DB_ERROR|save_dna requires an existing sequence".to_string());
+    }
     save_dna_to_file(&*state, sequence_id, path)
         .await
         .map(|p| p.to_string_lossy().to_string())

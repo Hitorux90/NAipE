@@ -5,9 +5,10 @@ type Sequence = { id: string; name: string; sequence: string; length_bp: number;
 interface Props {
   sequence: Sequence | null;
   onChange: (updated: Sequence) => void;
+  onCreateSequence?: (created: Sequence) => void;
 }
 
-export default function SequenceViewer({ sequence, onChange }: Props) {
+export default function SequenceViewer({ sequence, onChange, onCreateSequence }: Props) {
   const [name, setName] = useState('');
   const [sequenceText, setSequenceText] = useState('');
   const [topology, setTopology] = useState<string>('circular');
@@ -64,6 +65,34 @@ export default function SequenceViewer({ sequence, onChange }: Props) {
     }
   }
 
+  async function createSequence() {
+    setStatus(null);
+    if (!name.trim() || !sequenceText.trim()) {
+      setStatus('Name and sequence are required.');
+      return;
+    }
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const result = await invoke<{ id: number; name: string; sequence: string; length_bp: number; topology: string }>('create_sequence', {
+        name,
+        sequence: sequenceText,
+        topology,
+      });
+      setStatus('Sequence created');
+      setName('');
+      setSequenceText('');
+      onCreateSequence?.({
+        id: String(result.id),
+        name: result.name,
+        sequence: result.sequence,
+        length_bp: result.length_bp,
+        topology: result.topology,
+      });
+    } catch (e: any) {
+      setStatus(`Create failed: ${e?.message ?? e}`);
+    }
+  }
+
   if (!sequence) {
     return (
       <div className="panel">
@@ -93,7 +122,8 @@ export default function SequenceViewer({ sequence, onChange }: Props) {
           style={{ width: '100%' }}
         />
         <br />
-        <button id="new-sequence-btn" onClick={() => onChange({ name, sequence: sequenceText, length_bp: sequenceText.length, topology, id: 'new' })}>New sequence</button>
+        <button id="new-sequence-btn" onClick={createSequence}>New sequence</button>
+        {status && <p>{status}</p>}
       </div>
     );
   }

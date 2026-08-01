@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import FileExplorer from '../components/FileExplorer';
 import SequenceViewer from '../components/SequenceViewer';
 import PartsLibrary from '../components/PartsLibrary';
@@ -10,11 +10,51 @@ export default function App() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [parts, setParts] = useState<{ id: string; name: string }[]>([]);
   const [activeSequence, setActiveSequence] = useState<Sequence | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectSequence = (id: string) => {
     setActiveId(id);
     const found = sequences.find((s) => s.id === id) || null;
     setActiveSequence(found);
+  };
+
+  const handleCreateSequence = (created: Sequence) => {
+    setSequences((prev) => [...prev, created]);
+    setActiveId(created.id);
+    setActiveSequence(created);
+  };
+
+  const handleOpenSelected = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const result = await invoke<{ id: number; name: string; sequence: string; length_bp: number; topology: string }>('open_sequence', {
+        targetPath: (file as any).path || file.name,
+      });
+      const opened: Sequence = {
+        id: String(result.id),
+        name: result.name,
+        sequence: result.sequence,
+        length_bp: result.length_bp,
+        topology: result.topology,
+      };
+      setSequences((prev) => {
+        const exists = prev.find((s) => s.id === opened.id);
+        if (!exists) return [...prev, opened];
+        return prev.map((s) => (s.id === opened.id ? opened : s));
+      });
+      setActiveId(opened.id);
+      setActiveSequence(opened);
+    } catch (err: any) {
+      window.alert(`Open failed: ${err?.message ?? err}`);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -24,15 +64,18 @@ export default function App() {
           sequences={sequences}
           selectedId={activeId}
           onSelect={selectSequence}
-          onOpenSelected={() => {
-            // TODO: open_sequence needs a stored file path per sequence;
-            // current list view does not carry one.
-            window.alert('Open selected sequence: file path wiring pending.');
-          }}
+          onOpenSelected={handleOpenSelected}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".dna,.fasta,.gb"
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
         />
       </div>
       <div style={{ width: '55%' }}>
-        <SequenceViewer sequence={activeSequence} onChange={(u) => setActiveSequence(u)} />
+        <SequenceViewer sequence={activeSequence} onChange={setActiveSequence} onCreateSequence={handleCreateSequence} />
       </div>
       <div style={{ width: '25%', borderLeft: '1px solid #ccc' }}>
         <PartsLibrary parts={parts} />
