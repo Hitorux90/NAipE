@@ -86,17 +86,25 @@ pub async fn save_fasta_to_file(
     Ok(target_path.to_path_buf())
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-struct SidecarError {
-    error: String,
-    message: String,
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SidecarError {
+    pub error: String,
+    pub message: String,
 }
+
+impl std::fmt::Display for SidecarError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}|{}", self.error, self.message)
+    }
+}
+
+impl std::error::Error for SidecarError {}
 
 async fn send_sidecar_request(
     state: &tauri::State<'_, SidecarManager>,
     command: &str,
     payload: serde_json::Value,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, SidecarError> {
     let manager = state.inner();
     let req = SidecarRequest::new(Uuid::new_v4(), command)
         .with_payload(payload)
@@ -104,19 +112,34 @@ async fn send_sidecar_request(
 
     match manager.send_request(req).await {
         Ok(SidecarResponse { ok: true, result, .. }) => {
-            result.ok_or_else(|| "INTERNAL_ERROR|empty sidecar response".to_string())
+            result.ok_or_else(|| SidecarError {
+                error: "INTERNAL_ERROR".into(),
+                message: "empty sidecar response".into(),
+            })
         }
         Ok(SidecarResponse { ok: false, result, .. }) => {
             let detail = result.unwrap_or_default();
             if let Some(code) = detail.get("error").and_then(|v| v.as_str()) {
                 if let Some(msg) = detail.get("message").and_then(|v| v.as_str()) {
-                    return Err(format!("{}|{}", code, msg));
+                    return Err(SidecarError {
+                        error: code.into(),
+                        message: msg.into(),
+                    });
                 }
-                return Err(code.to_string());
+                return Err(SidecarError {
+                    error: code.into(),
+                    message: String::new(),
+                });
             }
-            Err("INTERNAL_ERROR|sidecar returned ok=false without error code".to_string())
+            Err(SidecarError {
+                error: "INTERNAL_ERROR".into(),
+                message: "sidecar returned ok=false without error code".into(),
+            })
         }
-        Err(io_err) => Err(format!("IO_ERROR|{}", io_err)),
+        Err(io_err) => Err(SidecarError {
+            error: "IO_ERROR".into(),
+            message: io_err.to_string(),
+        }),
     }
 }
 
@@ -222,11 +245,11 @@ fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
-async fn get_parts(state: tauri::State<'_, DbPool>) -> Result<Vec<Part>, String> {
+async fn get_parts(state: tauri::State<'_, DbPool>) -> Result<Vec<Part>, SidecarError> {
     sqlx::query_as::<_, Part>(db::models::PartQueries::ALL)
         .fetch_all(&*state)
         .await
-        .map_err(|e| format!("DB_ERROR|{}", e))
+        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
 }
 
 #[tauri::command]
@@ -235,10 +258,10 @@ async fn create_sequence(
     name: String,
     sequence: String,
     topology: String,
-) -> Result<Sequence, String> {
+) -> Result<Sequence, SidecarError> {
     inner_create_sequence(&*state, &name, &sequence, &topology)
         .await
-        .map_err(|e| format!("DB_ERROR|{}", e))
+        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
 }
 
 #[tauri::command]
@@ -247,18 +270,18 @@ async fn new_sequence(
     name: String,
     sequence: String,
     topology: String,
-) -> Result<Sequence, String> {
+) -> Result<Sequence, SidecarError> {
     inner_create_sequence(&*state, &name, &sequence, &topology)
         .await
-        .map_err(|e| format!("DB_ERROR|{}", e))
+        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
 }
 
 #[tauri::command]
-async fn list_sequences(state: tauri::State<'_, DbPool>) -> Result<Vec<Sequence>, String> {
+async fn list_sequences(state: tauri::State<'_, DbPool>) -> Result<Vec<Sequence>, SidecarError> {
     sqlx::query_as::<_, Sequence>(db::models::SequenceQueries::ALL)
         .fetch_all(&*state)
         .await
-        .map_err(|e| format!("DB_ERROR|{}", e))
+        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
 }
 
 #[tauri::command]
@@ -266,16 +289,16 @@ async fn save_dna(
     state: tauri::State<'_, DbPool>,
     sequence_id: i64,
     target_path: String,
-) -> Result<String, String> {
+) -> Result<String, SidecarError> {
     use std::path::Path;
     let path = Path::new(&target_path);
     if sequence_id == 0 {
-        return Err("DB_ERROR|save_dna requires an existing sequence".to_string());
+        return Err(SidecarError { error: "DB_ERROR".into(), message: "save_dna requires an existing sequence".into() });
     }
     save_dna_to_file(&*state, sequence_id, path)
         .await
         .map(|p| p.to_string_lossy().to_string())
-        .map_err(|e| format!("IO_ERROR|{}", e))
+        .map_err(|e| SidecarError { error: "IO_ERROR".into(), message: e.to_string() })
 }
 
 #[tauri::command]
@@ -283,20 +306,20 @@ async fn save_fasta(
     state: tauri::State<'_, DbPool>,
     sequence_id: i64,
     target_path: String,
-) -> Result<String, String> {
+) -> Result<String, SidecarError> {
     use std::path::Path;
     let path = Path::new(&target_path);
     save_fasta_to_file(&*state, sequence_id, path)
         .await
         .map(|p| p.to_string_lossy().to_string())
-        .map_err(|e| format!("IO_ERROR|{}", e))
+        .map_err(|e| SidecarError { error: "IO_ERROR".into(), message: e.to_string() })
 }
 
 #[tauri::command]
 async fn open_file(
     sidecar: tauri::State<'_, SidecarManager>,
     target_path: String,
-) -> Result<Sequence, String> {
+) -> Result<Sequence, SidecarError> {
     open_sequence(sidecar, target_path).await
 }
 
@@ -305,13 +328,13 @@ async fn save_as_dna(
     state: tauri::State<'_, DbPool>,
     sequence_id: i64,
     target_path: String,
-) -> Result<String, String> {
+) -> Result<String, SidecarError> {
     use std::path::Path;
     let path = Path::new(&target_path);
     save_dna_to_file(&*state, sequence_id, path)
         .await
         .map(|p| p.to_string_lossy().to_string())
-        .map_err(|e| format!("IO_ERROR|{}", e))
+        .map_err(|e| SidecarError { error: "IO_ERROR".into(), message: e.to_string() })
 }
 
 #[tauri::command]
@@ -319,13 +342,13 @@ async fn save_as_fasta(
     state: tauri::State<'_, DbPool>,
     sequence_id: i64,
     target_path: String,
-) -> Result<String, String> {
+) -> Result<String, SidecarError> {
     use std::path::Path;
     let path = Path::new(&target_path);
     save_fasta_to_file(&*state, sequence_id, path)
         .await
         .map(|p| p.to_string_lossy().to_string())
-        .map_err(|e| format!("IO_ERROR|{}", e))
+        .map_err(|e| SidecarError { error: "IO_ERROR".into(), message: e.to_string() })
 }
 
 #[tauri::command]
@@ -334,12 +357,12 @@ async fn save_as_gb(
     sidecar: tauri::State<'_, SidecarManager>,
     sequence_id: i64,
     target_path: String,
-) -> Result<String, String> {
+) -> Result<String, SidecarError> {
     let seq = sqlx::query_as::<_, Sequence>(db::models::SequenceQueries::BY_ID)
         .bind(sequence_id)
         .fetch_one(&*pool)
         .await
-        .map_err(|e| format!("DB_ERROR|{}", e))?;
+        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })?;
 
     let payload = serde_json::json!({
         "name": seq.name,
@@ -357,7 +380,7 @@ async fn save_as_gb(
 async fn open_sequence(
     sidecar: tauri::State<'_, SidecarManager>,
     target_path: String,
-) -> Result<Sequence, String> {
+) -> Result<Sequence, SidecarError> {
     let payload = serde_json::json!({"target_path": target_path});
     let result = send_sidecar_request(&sidecar, "open_sequence", payload).await?;
 
