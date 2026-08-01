@@ -1,6 +1,9 @@
 // src/components/ConstructViewer.tsx
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import ErrorBanner from './ErrorBanner';
+import LoadingSpinner from './LoadingSpinner';
+import EmptyState from './EmptyState';
 
 type ConstructPart = {
   id: string;
@@ -47,20 +50,34 @@ export default function ConstructViewer({ constructId }: Props) {
   }, [constructId]);
 
   if (constructId == null) {
-    return <div className="panel"><p>Select a construct to view.</p></div>;
+    return (
+      <div className="panel">
+        <EmptyState message="Select a construct to view" />
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="panel error"><p>{error}</p></div>;
+    return (
+      <div className="panel">
+        <ErrorBanner message={error} />
+      </div>
+    );
   }
 
   if (!construct) {
-    return <div className="panel"><p>Loading...</p></div>;
+    return (
+      <div className="panel">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
   return (
     <div className="panel construct-viewer">
-      <h3>{construct.name}</h3>
+      <div className="panel__header">
+        <h3 className="panel__title">{construct.name}</h3>
+      </div>
       <dl className="construct-meta">
         <dt>ID</dt><dd>{construct.id}</dd>
         <dt>Sequence</dt><dd>{construct.sequence_id}</dd>
@@ -73,9 +90,9 @@ export default function ConstructViewer({ constructId }: Props) {
             key={part.id}
             className="construct-part-tile"
             style={{
-              backgroundColor: part.color ?? '#888',
-              order: part.order,
-            }}
+              '--part-color': part.color ?? '#888',
+              '--part-order': part.order,
+            } as React.CSSProperties}
             title={`${part.part_id}: ${part.start}-${part.end}${part.strand < 0 ? ' reverse' : ''}`}
           >
             <span className="part-label">{part.part_id}</span>
