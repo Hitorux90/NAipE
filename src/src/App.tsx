@@ -58,28 +58,34 @@ export default function App() {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
-      <div style={{ width: '20%', borderRight: '1px solid #ccc' }}>
+    <div className="app">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".dna,.fasta,.gb"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
+      <aside className="layout__rail" data-testid="nav-rail">
+        {/* NavRail placeholder for 1b.6 */}
+      </aside>
+      <aside className="layout__sidebar--left">
         <FileExplorer
           sequences={sequences}
           selectedId={activeId}
           onSelect={selectSequence}
           onOpenSelected={handleOpenSelected}
         />
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".dna,.fasta,.gb"
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-        />
-      </div>
-      <div style={{ width: '55%' }}>
+      </aside>
+      <main className="layout__canvas">
         <SequenceViewer sequence={activeSequence} onChange={setActiveSequence} onCreateSequence={handleCreateSequence} />
-      </div>
-      <div style={{ width: '25%', borderLeft: '1px solid #ccc' }}>
+      </main>
+      <aside className="layout__sidebar--right">
         <PartsLibrary parts={parts} />
-      </div>
+      </aside>
+      <footer className="layout__status-bar" data-testid="status-bar">
+        {/* StatusBar placeholder for 1b.7 */}
+      </footer>
     </div>
   );
 }
