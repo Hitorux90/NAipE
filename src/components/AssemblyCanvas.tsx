@@ -33,6 +33,7 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [activePartId, setActivePartId] = useState<string | null>(null);
   const [annotationsByPart, setAnnotationsByPart] = useState<Record<string, Annotation[]>>({});
+  const [dragOver, setDragOver] = useState(false);
 
   const load = useCallback(async () => {
     if (constructId == null) return;
@@ -121,9 +122,10 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
       {error && <ErrorBanner message={error} />}
       {saveMsg && <p className="status">{saveMsg}</p>}
       <div
-        className="construct-canvas"
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={handleDrop}
+        className={`construct-canvas${dragOver ? ' drag-over' : ''}`}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => { setDragOver(false); handleDrop(e); }}
       >
         {loading && <LoadingSpinner />}
         {!loading && parts.length === 0 && <EmptyState message="Drop parts here" />}

@@ -231,7 +231,13 @@
   text-align: center;
 }
 
-/* Scrollbar */
+/* Drag-and-drop feedback */
+.construct-canvas.drag-over {
+  background: var(--color-bg-hover, #E5E7EB);
+  border: 2px dashed var(--color-primary-accent, #2563EB);
+}
+
+/* File list active accent */
 @media (forced-colors: none) {
   ::-webkit-scrollbar {
     width: 8px;
