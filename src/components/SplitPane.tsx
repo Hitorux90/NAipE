@@ -41,12 +41,28 @@ export default function SplitPane({
     document.removeEventListener('mouseup', handleMouseUp);
   }, [handleMouseMove]);
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft') {
+      setLeftWidth((w) => Math.max(minLeftWidth, w - 10));
+    } else if (e.key === 'ArrowRight') {
+      setLeftWidth((w) => Math.min(maxLeftWidth, w + 10));
+    }
+  }, [minLeftWidth, maxLeftWidth]);
+
   return (
     <div className="split-pane">
       <div className="split-pane__left" style={{ width: leftWidth }}>
         {left}
       </div>
-      <div className="split-pane__divider" role="separator" aria-orientation="vertical" onMouseDown={handleMouseDown} />
+      <div
+        className="split-pane__divider"
+        role="separator"
+        aria-orientation="vertical"
+        tabIndex={0}
+        style={{ cursor: 'col-resize' }}
+        onMouseDown={handleMouseDown}
+        onKeyDown={handleKeyDown}
+      />
       <div className="split-pane__right">
         {right}
       </div>
