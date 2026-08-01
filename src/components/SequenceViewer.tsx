@@ -1,5 +1,6 @@
 // src/components/SequenceViewer.tsx
 import { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 
 type Sequence = { id: string; name: string; sequence: string; length_bp: number; topology: string };
 interface Props {
@@ -39,7 +40,6 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
     if (!sequence) return;
     setStatus(null);
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
       const res = await invoke<{ old_text: string; new_text: string } | null>('undo', { sequenceId: Number(sequence.id) });
       if (res) {
         onChange({ ...sequence, sequence: res.old_text, length_bp: res.old_text.length });
@@ -54,7 +54,6 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
     if (!sequence) return;
     setStatus(null);
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
       const res = await invoke<{ old_text: string; new_text: string } | null>('redo', { sequenceId: Number(sequence.id) });
       if (res) {
         onChange({ ...sequence, sequence: res.new_text, length_bp: res.new_text.length });
@@ -72,7 +71,6 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
       return;
     }
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
       const result = await invoke<{ id: number; name: string; sequence: string; length_bp: number; topology: string }>('create_sequence', {
         name,
         sequence: sequenceText,
@@ -133,7 +131,7 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
     const current = sequence;
     if (!current) return;
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
+      
       const fallback = `C:\\ApE\\src-tauri\\target\\debug\\${encodeURIComponent(current.name)}.dna`;
       const out = await invoke<string>('save_dna', {
         sequenceId: Number(current.id),
@@ -150,7 +148,7 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
     const current = sequence;
     if (!current) return;
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
+      
       const fallback = `C:\\ApE\\src-tauri\\target\\debug\\${encodeURIComponent(current.name)}.fasta`;
       const out = await invoke<string>('save_as_fasta', {
         sequenceId: Number(current.id),
@@ -167,7 +165,7 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
     const current = sequence;
     if (!current) return;
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
+      
       const fallback = `C:\\ApE\\src-tauri\\target\\debug\\${encodeURIComponent(current.name)}.gb`;
       const out = await invoke<string>('save_as_gb', {
         sequenceId: Number(current.id),

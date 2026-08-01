@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import FileExplorer from '../components/FileExplorer';
 import SequenceViewer from '../components/SequenceViewer';
 import PartsLibrary from '../components/PartsLibrary';
@@ -32,7 +33,6 @@ export default function App() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
       const result = await invoke<{ id: number; name: string; sequence: string; length_bp: number; topology: string }>('open_sequence', {
         targetPath: (file as any).path || file.name,
       });

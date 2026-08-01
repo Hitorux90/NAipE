@@ -1,5 +1,6 @@
 // src/components/AnnotationDialog.tsx
 import { useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 
 export type Annotation = {
   id: number;
@@ -39,7 +40,7 @@ export default function AnnotationDialog({ open, constructPartId, defaultStart =
     setSaving(true);
     setError(null);
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
+      
       const id = await invoke<number>('create_annotation', {
         constructPartId,
         name: name || 'unnamed',
