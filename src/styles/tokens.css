@@ -1,5 +1,5 @@
 /* ============================================================
-   NAipE — Design Tokens (Fase 1b)
+   NAipE — Design Tokens (Fase Polish)
    Unified light-only theme.
    All tokens must include fallback values in var() usage.
    ============================================================ */
@@ -9,7 +9,7 @@
   --layout-nav-rail-width: 56px;
   --layout-sidebar-width: 240px;
   --layout-right-sidebar-width: 280px;
-  --layout-status-bar-height: 24px;
+  --layout-status-bar-height: var(--space-24, 24px);
   --layout-header-height: 48px;
   --layout-tab-height: 36px;
 
@@ -27,12 +27,29 @@
   --color-success: #16A34A;
   --color-success-bg: #F0FDF4;
 
-  /* Typography */
+  /* Typography scale */
   --font-family-ui: system-ui, -apple-system, sans-serif;
   --font-family-sequence: "Fira Code", "Courier New", monospace;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
   --font-size-base: 13px;
-  --font-size-ui-small: 12px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
   --font-weight-section-header: 600;
+
+  /* Spacing scale */
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
 
   /* Components */
   --icon-size-standard: 20px;
@@ -42,12 +59,20 @@
   /* Focus */
   --outline-focus-color: #2563EB;
   --outline-focus-width: 2px;
+  --outline-focus-offset: 2px;
+  --outline-focus-radius: 2px;
 
   /* State */
   --color-hover-bg: #E5E7EB;
   --color-active-bg: #D1D5DB;
+  --color-focus-ring: #2563EB;
   --opacity-disabled: 0.5;
   --color-disabled: #9CA3AF;
+
+  /* Transitions */
+  --transition-fast: 100ms;
+  --transition-normal: 200ms;
+  --transition-slow: 300ms;
 
   /* Z-index scale */
   --z-rail: 100;

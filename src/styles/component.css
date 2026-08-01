@@ -1,8 +1,10 @@
 /* ============================================================
-   NAipE — Component Styles (Fase 1b)
+   NAipE — Component Styles (Fase Polish)
    Baseline classes reused across panels, buttons, lists.
+   All spacing and typography values use design tokens.
    ============================================================ */
 
+/* Panels */
 .panel {
   background: var(--color-bg-sidebar, #F9FAFB);
   border-bottom: 1px solid var(--color-border-subtle, #E5E7EB);
@@ -15,8 +17,8 @@
 .panel__header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: var(--space-8, 8px);
+  padding: var(--space-10, 10px) var(--space-12, 12px);
   border-bottom: 1px solid var(--color-border-subtle, #E5E7EB);
   background: var(--color-bg-sidebar, #F9FAFB);
 }
@@ -28,20 +30,25 @@
   margin: 0;
 }
 
+/* Buttons */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-6, 6px);
   height: 32px;
-  padding: 0 12px;
+  padding: 0 var(--space-12, 12px);
   border-radius: 6px;
   border: 1px solid var(--color-border-subtle, #E5E7EB);
   background: var(--color-bg-canvas, #FFFFFF);
   color: var(--color-text-primary, #111827);
-  font-size: var(--font-size-ui-small, 12px);
+  font-size: var(--font-size-sm, 12px);
   line-height: 1;
   cursor: pointer;
+  transition:
+    background var(--transition-fast, 100ms),
+    border-color var(--transition-fast, 100ms),
+    color var(--transition-fast, 100ms);
 }
 
 .button:hover {
@@ -50,6 +57,12 @@
 
 .button:active {
   background: var(--color-active-bg, #D1D5DB);
+}
+
+.button:focus-visible {
+  outline: var(--outline-focus-width, 2px) solid var(--outline-focus-color, #2563EB);
+  outline-offset: var(--outline-focus-offset, 2px);
+  border-radius: var(--outline-focus-radius, 2px);
 }
 
 .button--primary {
@@ -66,12 +79,71 @@
   background: #1E40AF;
 }
 
+.button--secondary {
+  background: var(--color-bg-canvas, #FFFFFF);
+  border-color: var(--color-border-subtle, #E5E7EB);
+}
+
+.button--ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.button--ghost:hover {
+  background: var(--color-hover-bg, #E5E7EB);
+}
+
+.button--danger {
+  background: var(--color-danger-bg, #FEF2F2);
+  color: var(--color-danger, #DC2626);
+  border-color: transparent;
+}
+
+.button--danger:hover {
+  background: #FEE2E2;
+}
+
 .button:disabled,
 .button[disabled] {
   opacity: var(--opacity-disabled, 0.5);
   cursor: not-allowed;
 }
 
+/* Form controls */
+.input,
+.select,
+.textarea {
+  height: 32px;
+  padding: 0 var(--space-12, 12px);
+  border-radius: 6px;
+  border: 1px solid var(--color-border-subtle, #E5E7EB);
+  background: var(--color-bg-canvas, #FFFFFF);
+  color: var(--color-text-primary, #111827);
+  font: inherit;
+  font-size: var(--font-size-base, 13px);
+}
+
+.textarea {
+  height: auto;
+  padding: var(--space-8, 8px) var(--space-12, 12px);
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--color-focus-ring, #2563EB);
+  box-shadow: 0 0 0 2px var(--color-focus-ring, #2563EB);
+}
+
+.input:disabled,
+.select:disabled,
+.textarea:disabled {
+  opacity: var(--opacity-disabled, 0.5);
+  cursor: not-allowed;
+}
+
+/* File list */
 .file-list {
   list-style: none;
   margin: 0;
@@ -83,11 +155,12 @@
 .file-item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 6px 12px;
+  gap: var(--space-2, 2px);
+  padding: var(--space-6, 6px) var(--space-12, 12px);
   border-bottom: 1px solid var(--color-border-subtle, #E5E7EB);
   cursor: pointer;
   min-height: var(--sidebar-item-height, 28px);
+  transition: background var(--transition-fast, 100ms);
 }
 
 .file-item:hover {
@@ -102,6 +175,11 @@
   background: #C7CBD2;
 }
 
+.file-item:focus-visible {
+  outline: var(--outline-focus-width, 2px) solid var(--outline-focus-color, #2563EB);
+  outline-offset: calc(-1 * var(--outline-focus-width, 2px));
+}
+
 .file-item__name {
   font-weight: 600;
   color: var(--color-text-primary, #111827);
@@ -113,13 +191,41 @@
 }
 
 .file-explorer__actions {
-  padding: 10px 12px;
+  padding: var(--space-10, 10px) var(--space-12, 12px);
   border-top: 1px solid var(--color-border-subtle, #E5E7EB);
   background: var(--color-bg-sidebar, #F9FAFB);
 }
 
 .file-explorer__hint {
-  margin-top: 6px;
+  margin-top: var(--space-6, 6px);
   font-size: var(--font-size-ui-small, 12px);
   color: var(--color-text-secondary, #6B7280);
+}
+
+/* Separator */
+.separator {
+  height: 1px;
+  background: var(--color-border-subtle, #E5E7EB);
+  margin: var(--space-16, 16px) 0;
+  border: none;
+}
+
+/* Button group */
+.button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8, 8px);
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-12, 12px);
+  padding: var(--space-24, 24px);
+  color: var(--color-text-secondary, #6B7280);
+  font-size: var(--font-size-base, 13px);
+  text-align: center;
 }
