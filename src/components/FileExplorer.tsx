@@ -1,4 +1,5 @@
 import { getIcon } from '../utils/icons';
+import EmptyState from './EmptyState';
 
 type Sequence = { id: string; name: string; length_bp: number; topology: string };
 
@@ -19,6 +20,7 @@ export default function FileExplorer({ sequences, selectedId, onSelect, onOpenSe
         <h3 className="panel__title">File Explorer</h3>
       </div>
       <ul className="file-list">
+        {sequences.length === 0 && <EmptyState message="No sequences loaded" />}
         {sequences.map((s) => (
           <li
             key={s.id}

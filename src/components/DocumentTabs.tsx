@@ -13,6 +13,7 @@ export default function DocumentTabs({ tabs, activeId, onSelect }: Props) {
     <div className="doc-tabs" role="tablist">
       {tabs.map((tab) => {
         const Icon = tab.icon ? getIcon(tab.icon as any) : null;
+        const CloseIcon = getIcon('x');
         return (
           <button
             key={tab.id}
@@ -23,6 +24,9 @@ export default function DocumentTabs({ tabs, activeId, onSelect }: Props) {
           >
             {Icon && <Icon size={14} />}
             <span className="doc-tab__label">{tab.label}</span>
+            <span className="doc-tab__close" aria-label="Close">
+              <CloseIcon size={12} />
+            </span>
           </button>
         );
       })}
