@@ -72,11 +72,11 @@
 }
 
 .button--primary:hover {
-  background: #1D4ED8;
+  background: var(--button-primary-hover, #1D4ED8);
 }
 
 .button--primary:active {
-  background: #1E40AF;
+  background: var(--button-primary-active, #1E40AF);
 }
 
 .button--secondary {
@@ -100,7 +100,7 @@
 }
 
 .button--danger:hover {
-  background: #FEE2E2;
+  background: var(--button-danger-hover, #FEE2E2);
 }
 
 .button:disabled,
@@ -173,7 +173,7 @@
 }
 
 .file-item--active:hover {
-  background: #C7CBD2;
+  background: var(--file-item-hover-active, #C7CBD2);
 }
 
 .file-item:focus-visible {
@@ -238,6 +238,11 @@
 }
 
 /* File list active accent */
+.file-item--active {
+  background: var(--color-active-bg, #D1D5DB);
+  border-left: 3px solid var(--color-primary-accent, #2563EB);
+}
+
 @media (forced-colors: none) {
   ::-webkit-scrollbar {
     width: 8px;
@@ -269,14 +274,4 @@
     background: Highlight;
     color: HighlightText;
   }
-}
-
-/* File list active accent */
-.file-item--active {
-  background: var(--color-active-bg, #D1D5DB);
-  border-left: 3px solid var(--color-primary-accent, #2563EB);
-}
-
-.file-item--active:hover {
-  background: #C7CBD2;
 }

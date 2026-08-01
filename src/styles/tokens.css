@@ -68,6 +68,10 @@
   --color-focus-ring: #2563EB;
   --opacity-disabled: 0.5;
   --color-disabled: #9CA3AF;
+  --button-primary-hover: #1D4ED8;
+  --button-primary-active: #1E40AF;
+  --button-danger-hover: #FEE2E2;
+  --file-item-hover-active: #C7CBD2;
 
   /* Transitions */
   --transition-fast: 100ms;
