@@ -1,0 +1,35 @@
+/* ============================================================
+   NAipE — Loading States (Fase 1b)
+   ============================================================ */
+
+.loading-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--color-text-secondary, #6B7280);
+  font-size: var(--font-size-ui-small, 12px);
+}
+
+.loading-overlay--fullscreen {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.8);
+  z-index: var(--z-modal, 300);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border-subtle, #E5E7EB);
+  border-top-color: var(--color-primary-accent, #2563EB);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

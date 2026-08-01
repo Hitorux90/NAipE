@@ -7,7 +7,7 @@ describe('IconSystem', () => {
     const names = Object.keys(registry);
     expect(names.length).toBeGreaterThan(0);
     expect(names).toContain('dna');
-    expect(names).toContain('file-open');
+    expect(names).toContain('file');
     expect(names).toContain('library');
   });
 

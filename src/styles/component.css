@@ -1,0 +1,125 @@
+/* ============================================================
+   NAipE — Component Styles (Fase 1b)
+   Baseline classes reused across panels, buttons, lists.
+   ============================================================ */
+
+.panel {
+  background: var(--color-bg-sidebar, #F9FAFB);
+  border-bottom: 1px solid var(--color-border-subtle, #E5E7EB);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border-subtle, #E5E7EB);
+  background: var(--color-bg-sidebar, #F9FAFB);
+}
+
+.panel__title {
+  font-size: var(--font-size-base, 13px);
+  font-weight: var(--font-weight-section-header, 600);
+  color: var(--color-text-primary, #111827);
+  margin: 0;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border-subtle, #E5E7EB);
+  background: var(--color-bg-canvas, #FFFFFF);
+  color: var(--color-text-primary, #111827);
+  font-size: var(--font-size-ui-small, 12px);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--color-hover-bg, #E5E7EB);
+}
+
+.button:active {
+  background: var(--color-active-bg, #D1D5DB);
+}
+
+.button--primary {
+  background: var(--color-primary-accent, #2563EB);
+  color: #FFFFFF;
+  border-color: transparent;
+}
+
+.button--primary:hover {
+  background: #1D4ED8;
+}
+
+.button--primary:active {
+  background: #1E40AF;
+}
+
+.button:disabled,
+.button[disabled] {
+  opacity: var(--opacity-disabled, 0.5);
+  cursor: not-allowed;
+}
+
+.file-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  flex: 1;
+}
+
+.file-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--color-border-subtle, #E5E7EB);
+  cursor: pointer;
+  min-height: var(--sidebar-item-height, 28px);
+}
+
+.file-item:hover {
+  background: var(--color-hover-bg, #E5E7EB);
+}
+
+.file-item--active {
+  background: var(--color-active-bg, #D1D5DB);
+}
+
+.file-item--active:hover {
+  background: #C7CBD2;
+}
+
+.file-item__name {
+  font-weight: 600;
+  color: var(--color-text-primary, #111827);
+}
+
+.file-item__meta {
+  font-size: var(--font-size-ui-small, 12px);
+  color: var(--color-text-secondary, #6B7280);
+}
+
+.file-explorer__actions {
+  padding: 10px 12px;
+  border-top: 1px solid var(--color-border-subtle, #E5E7EB);
+  background: var(--color-bg-sidebar, #F9FAFB);
+}
+
+.file-explorer__hint {
+  margin-top: 6px;
+  font-size: var(--font-size-ui-small, 12px);
+  color: var(--color-text-secondary, #6B7280);
+}

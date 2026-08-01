@@ -1,4 +1,5 @@
-// src/components/FileExplorer.tsx
+import { getIcon } from '../utils/icons';
+
 type Sequence = { id: string; name: string; length_bp: number; topology: string };
 
 interface Props {
@@ -9,25 +10,34 @@ interface Props {
 }
 
 export default function FileExplorer({ sequences, selectedId, onSelect, onOpenSelected }: Props) {
-  const hasSelection = selectedId !== null;
+  const FileIcon = getIcon('folder-open');
+
   return (
     <div className="panel">
-      <h3>File Explorer</h3>
-      <ul>
+      <div className="panel__header">
+        <FileIcon size={16} />
+        <h3 className="panel__title">File Explorer</h3>
+      </div>
+      <ul className="file-list">
         {sequences.map((s) => (
           <li
             key={s.id}
+            className={`file-item${selectedId === s.id ? ' file-item--active' : ''}`}
             onClick={() => onSelect(s.id)}
-            style={{ cursor: 'pointer', fontWeight: s.id === selectedId ? 'bold' : 'normal' }}
+            role="button"
+            tabIndex={0}
           >
-            {s.name} ({s.topology}, {s.length_bp} bp)
+            <span className="file-item__name">{s.name}</span>
+            <span className="file-item__meta">{s.topology}, {s.length_bp} bp</span>
           </li>
         ))}
       </ul>
-      <button id="open-file-btn" onClick={onOpenSelected}>
-        Open file...
-      </button>
-      <p style={{ fontSize: '0.85em', color: 'gray' }}>Supported: .dna, .fasta, .gb</p>
+      <div className="file-explorer__actions">
+        <button className="button button--primary" onClick={onOpenSelected} id="open-file-btn">
+          Open file...
+        </button>
+        <p className="file-explorer__hint">Supported: .dna, .fasta, .gb</p>
+      </div>
     </div>
   );
 }
