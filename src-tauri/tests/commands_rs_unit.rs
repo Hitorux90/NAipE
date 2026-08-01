@@ -44,7 +44,7 @@ async fn seed_schema(p: &SqlitePool) {
         .execute(p)
         .await
         .expect("update trigger");
-    sqlx::query(apetauri_lib::db::schema::CREATE_TRIGGER_ASSEMBLY_HISTORY_DELETE)
+    sqlx::query(apetauri_lib::db::schema::CREATE_ASSEMBLY_HISTORY_DELETE)
         .execute(p)
         .await
         .expect("delete trigger");
@@ -123,4 +123,11 @@ async fn test_open_fasta_round_trip() {
     assert!(content.starts_with(">FastaTest"));
     assert!(content.contains("AAAA"));
     std::fs::remove_file(&tmp).ok();
+}
+
+#[tokio::test]
+async fn test_assembly_schema_constants_exist() {
+    use apetauri_lib::db::schema::{CREATE_CONSTRUCTS, CREATE_CONSTRUCT_PARTS};
+    assert!(CREATE_CONSTRUCTS.contains("CREATE TABLE IF NOT EXISTS Constructs"));
+    assert!(CREATE_CONSTRUCT_PARTS.contains("CREATE TABLE IF NOT EXISTS Construct_Parts"));
 }
