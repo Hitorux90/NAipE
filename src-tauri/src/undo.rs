@@ -6,11 +6,13 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct UndoEntry {
+    pub action_type: String,
     pub action: String,
     pub start: usize,
     pub old_text: String,
     pub new_text: String,
     pub timestamp_ms: i64,
+    pub payload: serde_json::Value,
 }
 
 #[derive(Debug)]

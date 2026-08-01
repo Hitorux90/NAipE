@@ -6,11 +6,25 @@ use apetauri_lib::undo::{UndoManager, UndoEntry};
 
 fn make_entry(start: usize, old_text: impl Into<String>, new_text: impl Into<String>) -> UndoEntry {
     UndoEntry {
+        action_type: "sequence".into(),
         action: "replace".into(),
         start,
         old_text: old_text.into(),
         new_text: new_text.into(),
         timestamp_ms: 123,
+        payload: serde_json::json!({}),
+    }
+}
+
+fn make_assembly_entry(action: &str, payload: serde_json::Value) -> UndoEntry {
+    UndoEntry {
+        action_type: "assembly".into(),
+        action: action.into(),
+        start: 0,
+        old_text: String::new(),
+        new_text: String::new(),
+        timestamp_ms: 123,
+        payload,
     }
 }
 
@@ -68,4 +82,32 @@ fn test_per_sequence_isolation() {
     manager.undo(1);
     assert!(!manager.can_undo(1));
     assert!(manager.can_undo(2));
+}
+
+#[test]
+fn test_assembly_undo_redo_cycle() {
+    let mut manager = UndoManager::new();
+    manager.push(1, make_assembly_entry("add_part", serde_json::json!({"part_id": "p001", "start": 0, "end": 20})));
+    manager.push(1, make_assembly_entry("add_part", serde_json::json!({"part_id": "p002", "start": 20, "end": 29})));
+
+    let first = manager.undo(1).expect("undo add_part");
+    assert_eq!(first.action, "add_part");
+    assert_eq!(first.payload.get("part_id").and_then(|v| v.as_str()), Some("p002"));
+
+    let restored = manager.redo(1).expect("redo add_part");
+    assert_eq!(restored.action, "add_part");
+    assert_eq!(restored.payload.get("part_id").and_then(|v| v.as_str()), Some("p002"));
+}
+
+#[test]
+fn test_assembly_undo_does_not_affect_sequence_undo() {
+    let mut manager = UndoManager::new();
+    manager.push(1, make_entry(0, "A", "G"));
+    manager.push(1, make_assembly_entry("add_part", serde_json::json!({"part_id": "p001"})));
+
+    assert!(manager.can_undo(1));
+    let first = manager.undo(1).expect("undo assembly");
+    assert_eq!(first.action, "add_part");
+    assert!(manager.can_undo(1), "sequence undo should still be available after assembly undo");
+    assert!(manager.can_redo(1));
 }
