@@ -571,49 +571,40 @@ impl SidecarManager {
 
                                 match serde_json::from_str::<serde_json::Value>(trimmed) {
                                     Ok(value) => {
-                                        if let Ok(resp) = serde_json::from_value::<SidecarResponse>(value.clone()) {
-                                            let request_id = resp.id;
-                                            let sender = {
-                                                let mut pending = pending.lock().await;
-                                                pending.remove(&request_id)
-                                            };
-                                            if let Some(tx) = sender {
-                                                let _ = tx.send(Ok(resp));
-                                            } else {
-                                                tracing::warn!(%request_id, "unmatched response received");
-                                            }
-                                        } else if let Ok(flat) = serde_json::from_value::<serde_json::Value>(value.clone()) {
-                                            if let (Some(id_str), Some(ok_flag), Some(payload)) = (
-                                                flat.get("id").and_then(|v| v.as_str()),
-                                                flat.get("ok").and_then(|v| v.as_bool()),
-                                                flat.get("payload"),
-                                            ) {
-                                                if let Ok(request_id) = Uuid::parse_str(id_str) {
-                                                    let resp = SidecarResponse {
-                                                        id: request_id,
-                                                        r#type: "response".into(),
-                                                        command: "".into(),
-                                                        ok: ok_flag,
-                                                        result: Some(payload.clone()),
-                                                        timestamp_ms: 0,
-                                                        offloaded: None,
-                                                    };
-                                                    let request_id = resp.id;
-                                                    let sender = {
-                                                        let mut pending = pending.lock().await;
-                                                        pending.remove(&request_id)
-                                                    };
-                                                    if let Some(tx) = sender {
-                                                        let _ = tx.send(Ok(resp));
-                                                    } else {
-                                                        tracing::warn!(%request_id, "unmatched flat response received");
+                                        // Dispatch on the envelope "type" field.
+                                        match value.get("type").and_then(|v| v.as_str()) {
+                                            Some("response") => {
+                                                match serde_json::from_value::<SidecarResponse>(value) {
+                                                    Ok(resp) => {
+                                                        let request_id = resp.id;
+                                                        let sender = {
+                                                            let mut pending = pending.lock().await;
+                                                            pending.remove(&request_id)
+                                                        };
+                                                        if let Some(tx) = sender {
+                                                            let _ = tx.send(Ok(resp));
+                                                        } else {
+                                                            tracing::warn!(%request_id, "unmatched response received");
+                                                        }
+                                                    }
+                                                    Err(e) => {
+                                                        tracing::warn!(err=%e, line=%trimmed, "response deserialization failed");
                                                     }
                                                 }
                                             }
-                                        } else if let Ok(envelope) =
-                                            serde_json::from_value::<SidecarErrorEnvelope>(value)
-                                        {
-                                            tracing::error!(code=%envelope.code, message=%envelope.message, "remote sidecar error");
+                                            Some("error") => {
+                                                match serde_json::from_value::<SidecarErrorEnvelope>(value) {
+                                                    Ok(envelope) => {
+                                                        tracing::error!(code=%envelope.code, message=%envelope.message, "remote sidecar error");
+                                                    }
+                                                    Err(e) => {
+                                                        tracing::warn!(err=%e, line=%trimmed, "error envelope deserialization failed");
+                                                    }
+                                                }
+                                            }
+                                            other => {
+                                                tracing::warn!(envelope_type=?other, line=%trimmed, "unknown envelope type on stdout");
+                                            }
                                         }
                                     }
                                     Err(e) => {
