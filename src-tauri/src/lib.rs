@@ -213,9 +213,10 @@ pub fn run() {
                         }
                     });
 
+                let empty_args: [&std::path::Path; 0] = [];
                 let sidecar_result = SidecarManager::new(
                     &python_candidate,
-                    &[std::path::Path::new(&python_candidate)],
+                    &empty_args,
                     SidecarConfig::default(),
                 )
                 .await;
