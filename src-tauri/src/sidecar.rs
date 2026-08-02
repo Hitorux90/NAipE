@@ -95,9 +95,9 @@ pub struct SidecarConfig {
 impl Default for SidecarConfig {
     fn default() -> Self {
         Self {
-            health_interval: Duration::from_secs(30),
-            health_timeout: Duration::from_secs(5),
-            offload_threshold: 1_048_576, // 1 MiB
+        health_interval: Duration::from_secs(30),
+        health_timeout: Duration::from_secs(5),
+        offload_threshold: 1_048_576, // 1 MiB
         }
     }
 }
@@ -145,11 +145,11 @@ impl SidecarRequest {
     /// Convenience constructor.
     pub fn new(request_id: Uuid, command: impl Into<String>) -> Self {
         Self {
-            request_id,
-            command: command.into(),
-            payload: None,
-            offloaded: None,
-            timestamp_ms: 0,
+        request_id,
+        command: command.into(),
+        payload: None,
+        offloaded: None,
+        timestamp_ms: 0,
         }
     }
 
@@ -172,21 +172,21 @@ impl SidecarRequest {
     /// next restart or file-read path.
     pub fn with_large_payload(mut self, bytes: Vec<u8>, threshold: usize) -> Self {
         if bytes.len() > threshold {
-            let payload_id = Uuid::new_v4();
-            let file_name = format!("ape-sidecar-{payload_id}.bin");
-            let path = std::env::temp_dir().join(file_name);
-            if std::fs::write(&path, &bytes).is_err() {
-                self.payload = Some(serde_json::Value::String(String::new()));
-            }
-            self.offloaded = Some(OffloadedPayload {
-                path,
-                bytes_len: bytes.len() as u64,
-                payload_id,
-            });
+        let payload_id = Uuid::new_v4();
+        let file_name = format!("ape-sidecar-{payload_id}.bin");
+        let path = std::env::temp_dir().join(file_name);
+        if std::fs::write(&path, &bytes).is_err() {
+            self.payload = Some(serde_json::Value::String(String::new()));
+        }
+        self.offloaded = Some(OffloadedPayload {
+            path,
+            bytes_len: bytes.len() as u64,
+            payload_id,
+        });
         } else {
-            self.payload = Some(serde_json::Value::String(
-                String::from_utf8_lossy(&bytes).into_owned(),
-            ));
+        self.payload = Some(serde_json::Value::String(
+            String::from_utf8_lossy(&bytes).into_owned(),
+        ));
         }
         self
     }
@@ -210,25 +210,25 @@ pub struct SidecarResponse {
 impl SidecarResponse {
     pub fn ok(id: Uuid, result: serde_json::Value) -> Self {
         Self {
-            id,
-            r#type: "response".into(),
-            command: "".into(),
-            ok: true,
-            result: Some(result),
-            timestamp_ms: 0,
-            offloaded: None,
+        id,
+        r#type: "response".into(),
+        command: "".into(),
+        ok: true,
+        result: Some(result),
+        timestamp_ms: 0,
+        offloaded: None,
         }
     }
 
     pub fn err(id: Uuid, message: impl Into<String>) -> Self {
         Self {
-            id,
-            r#type: "response".into(),
-            command: "".into(),
-            ok: false,
-            result: Some(serde_json::json!({ "error": message.into() })),
-            timestamp_ms: 0,
-            offloaded: None,
+        id,
+        r#type: "response".into(),
+        command: "".into(),
+        ok: false,
+        result: Some(serde_json::json!({ "error": message.into() })),
+        timestamp_ms: 0,
+        offloaded: None,
         }
     }
 }
@@ -249,9 +249,9 @@ pub struct SidecarErrorEnvelope {
 impl SidecarErrorEnvelope {
     pub fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self {
-            code: code.into(),
-            message: message.into(),
-            details: None,
+        code: code.into(),
+        message: message.into(),
+        details: None,
         }
     }
 }
@@ -273,8 +273,8 @@ impl HealthStatus {
 
     pub fn down(message: impl Into<String>) -> Self {
         Self {
-            alive: false,
-            message: Some(message.into()),
+        alive: false,
+        message: Some(message.into()),
         }
     }
 }
@@ -327,19 +327,19 @@ impl SidecarManager {
         config: SidecarConfig,
     ) -> io::Result<Self> {
         let mut child = Command::new(python_executable.as_ref())
-            .args(
-                args.iter()
-                    .map(|p| p.as_ref().as_os_str().to_owned())
-                    .collect::<Vec<_>>(),
-            )
-            // Use unbuffered lines in Python (`-u`) so newlines reach the
-            // parent immediately and per-line framing stays consistent.
-            .arg("-u")
-            // Pipes are mandatory; without them we cannot drive NDJSON.
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
+        .args(
+            args.iter()
+                .map(|p| p.as_ref().as_os_str().to_owned())
+                .collect::<Vec<_>>(),
+        )
+        // Use unbuffered lines in Python (`-u`) so newlines reach the
+        // parent immediately and per-line framing stays consistent.
+        .arg("-u")
+        // Pipes are mandatory; without them we cannot drive NDJSON.
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
 
         let stdin = child.stdin.take();
         let stdout = child.stdout.take();
@@ -350,23 +350,23 @@ impl SidecarManager {
         let cancel = CancellationToken::new();
 
         let manager = Self {
-            child: std::sync::Mutex::new(Some(child)),
-            pending: Arc::new(Mutex::new(HashMap::new())),
-            stdin_writer: Mutex::new(stdin),
-            cancel: std::sync::Mutex::new(cancel),
-            config,
-            temp_files: Mutex::new(Vec::new()),
-            python_executable: python_exec,
-            args: sidecar_args,
+        child: std::sync::Mutex::new(Some(child)),
+        pending: Arc::new(Mutex::new(HashMap::new())),
+        stdin_writer: Mutex::new(stdin),
+        cancel: std::sync::Mutex::new(cancel),
+        config,
+        temp_files: Mutex::new(Vec::new()),
+        python_executable: python_exec,
+        args: sidecar_args,
         };
 
         if let Some(stdout) = stdout {
-            let token = manager.cancel.lock().expect("cancel mutex poisoned").clone();
-            manager.spawn_stdout_reader(stdout, token);
+        let token = manager.cancel.lock().expect("cancel mutex poisoned").clone();
+        manager.spawn_stdout_reader(stdout, token);
         }
         if let Some(stderr) = stderr {
-            let token = manager.cancel.lock().expect("cancel mutex poisoned").clone();
-            manager.spawn_stderr_reader(stderr, token);
+        let token = manager.cancel.lock().expect("cancel mutex poisoned").clone();
+        manager.spawn_stderr_reader(stderr, token);
         }
 
         Ok(manager)
@@ -380,11 +380,11 @@ impl SidecarManager {
     /// Reads a temp file payload. If the file is missing, returns `None`.
     pub async fn read_offloaded(&self, offloaded: OffloadedPayload) -> io::Result<Option<Vec<u8>>> {
         match std::fs::read(&offloaded.path) {
-            Ok(data) => Ok(Some(data)),
-            Err(e) => {
-                tracing::warn!(path=%offloaded.path.display(), err=%e, "offloaded payload read failed");
-                Ok(None)
-            }
+        Ok(data) => Ok(Some(data)),
+        Err(e) => {
+            tracing::warn!(path=%offloaded.path.display(), err=%e, "offloaded payload read failed");
+            Ok(None)
+        }
         }
     }
 
@@ -392,13 +392,21 @@ impl SidecarManager {
     /// `pong`. Returns `true` when the sidecar is alive.
     pub async fn health_ping(&self) -> io::Result<bool> {
         let request_id = Uuid::new_v4();
-        let env = serde_json::json!({ "kind": "health", "request_id": request_id });
 
         let (tx, rx) = oneshot::channel();
         {
             let mut pending = self.pending.lock().await;
             pending.insert(request_id, tx);
         }
+
+        // Use the standard NDJSON envelope via send_ndjson_line.
+        let env = json!({
+            "id": request_id.to_string(),
+            "type": "request",
+            "command": "ping",
+            "payload": serde_json::Value::Null,
+            "timestamp_ms": 0,
+        });
 
         if !self.send_ndjson_line(&env).await {
             return Err(io::Error::new(
@@ -413,10 +421,10 @@ impl SidecarManager {
             .map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, "oneshot dropped"))??;
 
         match pong.result {
-            Some(val) if val == serde_json::json!({"alive": true, "message": null}) => Ok(true),
+            Some(ref val) if val.get("alive").and_then(|v| v.as_bool()) == Some(true) => Ok(true),
             _ => Ok(false),
         }
-    }
+        }
 
     /// Starts a background health-check loop. The loop sends a `ping` every
     /// `config.health_interval`. If a `ping` fails or the sidecar exits
@@ -431,16 +439,16 @@ impl SidecarManager {
     {
         let mut interval = time::interval(self.config.health_interval);
         loop {
-            interval.tick().await;
-            match self.health_ping().await {
-                Ok(true) => {}
-                Ok(false) | Err(_) => {
-                    let envelope =
-                        SidecarErrorEnvelope::new("health_check_failed", "sidecar did not pong");
-                    on_error(envelope);
-                    let _ = self.restart().await;
-                }
+        interval.tick().await;
+        match self.health_ping().await {
+            Ok(true) => {}
+            Ok(false) | Err(_) => {
+                let envelope =
+                    SidecarErrorEnvelope::new("health_check_failed", "sidecar did not pong");
+                on_error(envelope);
+                let _ = self.restart().await;
             }
+        }
         }
     }
 
@@ -456,32 +464,32 @@ impl SidecarManager {
         // Complete `request_id` is the correlation key.
         let (tx, rx) = oneshot::channel();
         {
-            let mut pending = self.pending.lock().await;
-            // If a previous request with the same id was abandoned, drop it.
-            pending.insert(request_id, tx);
+        let mut pending = self.pending.lock().await;
+        // If a previous request with the same id was abandoned, drop it.
+        pending.insert(request_id, tx);
         }
 
         // Serialize as the flat envelope shape documented in ndjson_examples.md.
         let env = json!({
-            "id": request_id.to_string(),
-            "type": "request",
-            "command": req.command,
-            "payload": req.payload.unwrap_or(serde_json::Value::Null),
-            "timestamp_ms": req.timestamp_ms,
+        "id": request_id.to_string(),
+        "type": "request",
+        "command": req.command,
+        "payload": req.payload.unwrap_or(serde_json::Value::Null),
+        "timestamp_ms": req.timestamp_ms,
         });
 
         if !self.send_ndjson_line(&env).await {
-            let mut pending = self.pending.lock().await;
-            pending.remove(&request_id);
-            return Err(io::Error::new(
-                io::ErrorKind::BrokenPipe,
-                "sidecar stdin is closed",
-            ));
+        let mut pending = self.pending.lock().await;
+        pending.remove(&request_id);
+        return Err(io::Error::new(
+            io::ErrorKind::BrokenPipe,
+            "sidecar stdin is closed",
+        ));
         }
 
         let result = rx
-            .await
-            .map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, "oneshot dropped"))??;
+        .await
+        .map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, "oneshot dropped"))??;
 
         Ok(result)
     }
@@ -493,16 +501,16 @@ impl SidecarManager {
     async fn send_ndjson_line(&self, value: &serde_json::Value) -> bool {
         let mut guard = self.stdin_writer.lock().await;
         let writer = match &mut *guard {
-            Some(w) => w,
-            None => return false,
+        Some(w) => w,
+        None => return false,
         };
         let mut line = serde_json::to_vec(value).unwrap_or_default();
         line.push(b'\n');
         if writer.write_all(&line).await.is_err() {
-            return false;
+        return false;
         }
         if writer.flush().await.is_err() {
-            return false;
+        return false;
         }
         true
     }
@@ -516,19 +524,19 @@ impl SidecarManager {
     async fn fulfill(&self, response: SidecarResponse) {
         let request_id = response.id;
         let sender = {
-            let mut pending = self.pending.lock().await;
-            pending.remove(&request_id)
+        let mut pending = self.pending.lock().await;
+        pending.remove(&request_id)
         };
 
         match sender {
-            Some(tx) => {
-                let _ = tx.send(Ok(response));
-            }
-            None => {
-                // We received a response for a request we no longer track.
-                // This can happen during restarts or when the peer is buggy.
-                tracing::warn!(%request_id, "unmatched response received");
-            }
+        Some(tx) => {
+            let _ = tx.send(Ok(response));
+        }
+        None => {
+            // We received a response for a request we no longer track.
+            // This can happen during restarts or when the peer is buggy.
+            tracing::warn!(%request_id, "unmatched response received");
+        }
         }
     }
 
@@ -549,79 +557,79 @@ impl SidecarManager {
     fn spawn_stdout_reader(&self, stdout: ChildStdout, cancel: CancellationToken) {
         let pending = self.pending.clone();
         spawn(async move {
-            let mut reader = BufReader::new(stdout);
-            let mut line = String::new();
+        let mut reader = BufReader::new(stdout);
+        let mut line = String::new();
 
-            loop {
-                select! {
-                    _ = cancel.cancelled() => {
-                        break;
-                    }
-                    read = reader.read_line(&mut line) => {
-                        match read {
-                            Ok(0) => {
-                                break;
+        loop {
+            select! {
+                _ = cancel.cancelled() => {
+                    break;
+                }
+                read = reader.read_line(&mut line) => {
+                    match read {
+                        Ok(0) => {
+                            break;
+                        }
+                        Ok(_) => {
+                            let trimmed = line.trim_end_matches(&['\n', '\r'][..]);
+                            if trimmed.is_empty() {
+                                line.clear();
+                                continue;
                             }
-                            Ok(_) => {
-                                let trimmed = line.trim_end_matches(&['\n', '\r'][..]);
-                                if trimmed.is_empty() {
-                                    line.clear();
-                                    continue;
-                                }
 
-                                match serde_json::from_str::<serde_json::Value>(trimmed) {
-                                    Ok(value) => {
-                                        // Dispatch on the envelope "type" field.
-                                        match value.get("type").and_then(|v| v.as_str()) {
-                                            Some("response") => {
-                                                match serde_json::from_value::<SidecarResponse>(value) {
-                                                    Ok(resp) => {
-                                                        let request_id = resp.id;
-                                                        let sender = {
-                                                            let mut pending = pending.lock().await;
-                                                            pending.remove(&request_id)
-                                                        };
-                                                        if let Some(tx) = sender {
-                                                            let _ = tx.send(Ok(resp));
-                                                        } else {
-                                                            tracing::warn!(%request_id, "unmatched response received");
-                                                        }
-                                                    }
-                                                    Err(e) => {
-                                                        tracing::warn!(err=%e, line=%trimmed, "response deserialization failed");
+                            match serde_json::from_str::<serde_json::Value>(trimmed) {
+                                Ok(value) => {
+                                    // Dispatch on the envelope "type" field.
+                                    match value.get("type").and_then(|v| v.as_str()) {
+                                        Some("response") => {
+                                            match serde_json::from_value::<SidecarResponse>(value) {
+                                                Ok(resp) => {
+                                                    let request_id = resp.id;
+                                                    let sender = {
+                                                        let mut pending = pending.lock().await;
+                                                        pending.remove(&request_id)
+                                                    };
+                                                    if let Some(tx) = sender {
+                                                        let _ = tx.send(Ok(resp));
+                                                    } else {
+                                                        tracing::warn!(%request_id, "unmatched response received");
                                                     }
                                                 }
-                                            }
-                                            Some("error") => {
-                                                match serde_json::from_value::<SidecarErrorEnvelope>(value) {
-                                                    Ok(envelope) => {
-                                                        tracing::error!(code=%envelope.code, message=%envelope.message, "remote sidecar error");
-                                                    }
-                                                    Err(e) => {
-                                                        tracing::warn!(err=%e, line=%trimmed, "error envelope deserialization failed");
-                                                    }
+                                                Err(e) => {
+                                                    tracing::warn!(err=%e, line=%trimmed, "response deserialization failed");
                                                 }
-                                            }
-                                            other => {
-                                                tracing::warn!(envelope_type=?other, line=%trimmed, "unknown envelope type on stdout");
                                             }
                                         }
-                                    }
-                                    Err(e) => {
-                                        tracing::warn!(err=%e, line=%trimmed, "ndjson parse failed on stdout");
+                                        Some("error") => {
+                                            match serde_json::from_value::<SidecarErrorEnvelope>(value) {
+                                                Ok(envelope) => {
+                                                    tracing::error!(code=%envelope.code, message=%envelope.message, "remote sidecar error");
+                                                }
+                                                Err(e) => {
+                                                    tracing::warn!(err=%e, line=%trimmed, "error envelope deserialization failed");
+                                                }
+                                            }
+                                        }
+                                        other => {
+                                            tracing::warn!(envelope_type=?other, line=%trimmed, "unknown envelope type on stdout");
+                                        }
                                     }
                                 }
-                            }
-                            Err(e) => {
-                                tracing::warn!(err=%e, "stdout read error");
-                                break;
+                                Err(e) => {
+                                    tracing::warn!(err=%e, line=%trimmed, "ndjson parse failed on stdout");
+                                }
                             }
                         }
-                        line.clear();
+                        Err(e) => {
+                            tracing::warn!(err=%e, "stdout read error");
+                            break;
+                        }
                     }
+                    line.clear();
                 }
             }
-            tracing::info!("stdout reader task exited");
+        }
+        tracing::info!("stdout reader task exited");
         });
     }
 
@@ -635,35 +643,35 @@ impl SidecarManager {
         // all, the child could deadlock in the Python standard library when
         // `sys.stderr.write` blocks.
         spawn(async move {
-            let mut reader = BufReader::new(stderr);
-            let mut line = String::new();
+        let mut reader = BufReader::new(stderr);
+        let mut line = String::new();
 
-            loop {
-                select! {
-                    _ = cancel.cancelled() => break,
-                    read = reader.read_line(&mut line) => {
-                        match read {
-                            Ok(0) => {
-                                // Child closed stderr.
-                                break;
+        loop {
+            select! {
+                _ = cancel.cancelled() => break,
+                read = reader.read_line(&mut line) => {
+                    match read {
+                        Ok(0) => {
+                            // Child closed stderr.
+                            break;
+                        }
+                        Ok(_) => {
+                            // Log or forward as needed.
+                            let trimmed = line.trim_end_matches(&['\n', '\r'][..]);
+                            if !trimmed.is_empty() {
+                                tracing::info!(line=%trimmed, "sidecar stderr");
                             }
-                            Ok(_) => {
-                                // Log or forward as needed.
-                                let trimmed = line.trim_end_matches(&['\n', '\r'][..]);
-                                if !trimmed.is_empty() {
-                                    tracing::info!(line=%trimmed, "sidecar stderr");
-                                }
-                            }
-                            Err(e) => {
-                                tracing::warn!(err=%e, "stderr read error");
-                                break;
-                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!(err=%e, "stderr read error");
+                            break;
                         }
                     }
                 }
-                line.clear();
             }
-            tracing::info!("stderr reader task exited");
+            line.clear();
+        }
+        tracing::info!("stderr reader task exited");
         });
     }
 
@@ -680,7 +688,7 @@ impl SidecarManager {
         // Clean up temp files from the previous run.
         let mut temp_files = self.temp_files.lock().await;
         for path in temp_files.drain(..) {
-            let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&path);
         }
         drop(temp_files);
 
@@ -691,11 +699,11 @@ impl SidecarManager {
         // Kill the old child.
         let mut child_guard = self.child.lock().expect("child mutex poisoned");
         if let Some(mut child) = child_guard.take() {
-            // Close stdin to signal the Python sidecar.
-            let _ = child.stdin.take();
-            // 2-second grace period before hard kill.
-            let _ = time::timeout(Duration::from_secs(2), child.wait()).await;
-            let _ = child.kill().await;
+        // Close stdin to signal the Python sidecar.
+        let _ = child.stdin.take();
+        // 2-second grace period before hard kill.
+        let _ = time::timeout(Duration::from_secs(2), child.wait()).await;
+        let _ = child.kill().await;
         }
         drop(child_guard);
 
@@ -705,12 +713,12 @@ impl SidecarManager {
 
         // Respawn the child process with the stored executable and args.
         let mut new_child = Command::new(&self.python_executable)
-            .args(&self.args)
-            .arg("-u")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
+        .args(&self.args)
+        .arg("-u")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
 
         let new_stdin = new_child.stdin.take();
         let new_stdout = new_child.stdout.take();
@@ -724,12 +732,12 @@ impl SidecarManager {
 
         // Spawn new reader tasks with the fresh cancellation token.
         if let Some(stdout) = new_stdout {
-            let token = self.cancel.lock().expect("cancel mutex poisoned").clone();
-            self.spawn_stdout_reader(stdout, token);
+        let token = self.cancel.lock().expect("cancel mutex poisoned").clone();
+        self.spawn_stdout_reader(stdout, token);
         }
         if let Some(stderr) = new_stderr {
-            let token = self.cancel.lock().expect("cancel mutex poisoned").clone();
-            self.spawn_stderr_reader(stderr, token);
+        let token = self.cancel.lock().expect("cancel mutex poisoned").clone();
+        self.spawn_stderr_reader(stderr, token);
         }
 
         tracing::info!("sidecar restarted successfully");
@@ -747,10 +755,10 @@ impl Drop for SidecarManager {
         // this manager struct.
         let mut child_guard = self.child.lock().expect("child mutex poisoned");
         if let Some(mut child) = child_guard.take() {
-            // We're in a sync drop context, so spawn a blocking task to wait
-            // this out. `kill()` is async under tokio process, so we take
-            // only the first-aid step here.
-            let _ = child.start_kill();
+        // We're in a sync drop context, so spawn a blocking task to wait
+        // this out. `kill()` is async under tokio process, so we take
+        // only the first-aid step here.
+        let _ = child.start_kill();
         }
     }
 }
@@ -783,8 +791,8 @@ mod tests {
         let text = serialize_ndjson(&resp).expect("serialize");
         assert!(!text.contains('\n') || text.lines().count() == 1, "must be one line");
         assert!(
-            text.contains(","),
-            "compact separators must include commas"
+        text.contains(","),
+        "compact separators must include commas"
         );
         // No indentation/blanks.
         assert!(text.find("  ").is_none(), "no indentation allowed");
@@ -810,7 +818,7 @@ mod tests {
     #[test]
     fn deserialize_same_shape() {
         let original = SidecarRequest::new(Uuid::new_v4(), "summarize")
-            .with_payload(serde_json::json!({"count": 42}));
+        .with_payload(serde_json::json!({"count": 42}));
         let text = serialize_ndjson(&original).expect("serialize");
         let back: SidecarRequest = deserialize_ndjson(&text).expect("deserialize");
         assert_eq!(original.request_id, back.request_id);
