@@ -22,6 +22,8 @@ def _find_db_path() -> str:
 
 
 def main() -> None:
+    sys.stderr.write("[sidecar] started, waiting for stdin...\n")
+    sys.stderr.flush()
     for raw_line in sys.stdin:
         line = raw_line.strip()
         if not line:
