@@ -69,7 +69,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStderr, ChildStdout, Command};
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::{oneshot, Mutex, Semaphore};
 use tokio::{select, spawn, time};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
@@ -316,6 +316,9 @@ pub struct SidecarManager {
     /// Cancellation token shared by the stdout/stderr reader tasks.
     /// Wrapped in a std Mutex so restart() can replace it atomically.
     cancel: std::sync::Mutex<CancellationToken>,
+    /// Semaphore capping concurrent in-flight requests to bound memory usage.
+    /// Permit is acquired in `send_request` and released on drop.
+    request_semaphore: Arc<Semaphore>,
     /// Configured thresholds and intervals.
     config: SidecarConfig,
     /// Temp files created to offload payloads larger than the threshold.
@@ -359,12 +362,14 @@ impl SidecarManager {
         let python_exec = python_executable.as_ref().to_path_buf();
         let sidecar_args: Vec<PathBuf> = args.iter().map(|p| p.as_ref().to_path_buf()).collect();
         let cancel = CancellationToken::new();
+        let semaphore = Arc::new(Semaphore::new(100));
 
         let manager = Self {
         child: std::sync::Mutex::new(Some(child)),
         pending: Arc::new(Mutex::new(HashMap::new())),
         stdin_writer: Mutex::new(stdin),
         cancel: std::sync::Mutex::new(cancel),
+        request_semaphore: semaphore,
         config,
         temp_files: Mutex::new(Vec::new()),
         python_executable: python_exec,
@@ -475,6 +480,15 @@ impl SidecarManager {
         &self,
         req: SidecarRequest,
     ) -> io::Result<SidecarResponse> {
+        // Acquire a permit before entering the pending table. If all 100
+        // permits are held by in-flight requests, this await blocks until
+        // one is freed, providing automatic backpressure.
+        let _permit = self
+            .request_semaphore
+            .acquire()
+            .await
+            .map_err(|_| io::Error::new(io::ErrorKind::Other, "semaphore closed"))?;
+
         let request_id = req.request_id;
 
         // Complete `request_id` is the correlation key.
