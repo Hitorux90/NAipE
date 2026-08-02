@@ -73,13 +73,14 @@ export default function App() {
       <aside className="layout__rail" data-testid="nav-rail">
         <NavRail items={[{id:'sequences',icon:'dna',label:'DNA'},{id:'constructs',icon:'library',label:'Parts'}]} activeId="sequences" onSelect={() => {}} />
       </aside>
-      <div style={{ gridArea: 'sidebar-left / sidebar-left / canvas / canvas', display: 'flex', width: '100%', height: '100%', overflow: 'hidden' }}>
+      <div className="layout__content">
         <SplitPane
-          defaultLeftWidth={280}
-          minLeftWidth={180}
-          maxLeftWidth={400}
+          primaryPane="left"
+          defaultSize={280}
+          minSize={180}
+          maxSize={400}
           left={
-            <aside className="layout__sidebar--left" style={{ width: '100%' }}>
+            <aside className="layout__sidebar--left">
               <FileExplorer
                 sequences={sequences}
                 selectedId={activeId}
@@ -89,18 +90,27 @@ export default function App() {
             </aside>
           }
           right={
-            <main className="layout__canvas">
-              <DocumentTabs tabs={[]} activeId="" onSelect={() => {}} />
-              <SequenceViewer sequence={activeSequence} onChange={setActiveSequence} onCreateSequence={handleCreateSequence} />
-            </main>
+            <SplitPane
+              primaryPane="right"
+              defaultSize={280}
+              minSize={180}
+              maxSize={480}
+              left={
+                <main className="layout__canvas">
+                  <DocumentTabs tabs={[]} activeId="" onSelect={() => {}} />
+                  <SequenceViewer sequence={activeSequence} onChange={setActiveSequence} onCreateSequence={handleCreateSequence} />
+                </main>
+              }
+              right={
+                <aside className="layout__sidebar--right">
+                  <PartsLibrary parts={parts} />
+                </aside>
+              }
+            />
           }
         />
       </div>
-      <aside className="layout__sidebar--right">
-        <PartsLibrary parts={parts} />
-      </aside>
       <StatusBar message="Ready" />
     </div>
   );
 }
-
