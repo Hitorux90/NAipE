@@ -231,6 +231,36 @@
   text-align: center;
 }
 
+/* Canvas & Sequence Viewer */
+.canvas__empty,
+.canvas__content {
+  background: var(--color-bg-canvas, #FFFFFF);
+  padding: var(--space-16, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12, 12px);
+  flex: 1;
+  overflow: auto;
+}
+
+.canvas__title {
+  font-size: var(--font-size-base, 13px);
+  font-weight: var(--font-weight-section-header, 600);
+  color: var(--color-text-primary, #111827);
+  margin: 0 0 var(--space-12, 12px) 0;
+}
+
+.status {
+  font-size: var(--font-size-base, 13px);
+  color: var(--color-text-primary, #111827);
+  padding: var(--space-8, 8px) var(--space-12, 12px);
+  background: var(--color-bg-sidebar, #F9FAFB);
+  border: 1px solid var(--color-border-subtle, var(--border-color-subtle, #E5E7EB));
+  border-radius: 6px;
+  margin-top: var(--space-12, 12px);
+}
+
+
 /* Drag-and-drop feedback */
 .construct-canvas.drag-over {
   background: var(--color-bg-hover, #E5E7EB);

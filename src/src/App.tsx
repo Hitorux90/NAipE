@@ -3,8 +3,10 @@ import { invoke } from '@tauri-apps/api/core';
 import FileExplorer from '../components/FileExplorer';
 import SequenceViewer from '../components/SequenceViewer';
 import PartsLibrary from '../components/PartsLibrary';
+import DocumentTabs from '../components/DocumentTabs';
 import NavRail from '../components/NavRail';
 import StatusBar from '../components/StatusBar';
+import SplitPane from '../components/SplitPane';
 
 type Sequence = { id: string; name: string; sequence: string; length_bp: number; topology: string };
 
@@ -71,23 +73,34 @@ export default function App() {
       <aside className="layout__rail" data-testid="nav-rail">
         <NavRail items={[{id:'sequences',icon:'dna',label:'DNA'},{id:'constructs',icon:'library',label:'Parts'}]} activeId="sequences" onSelect={() => {}} />
       </aside>
-      <aside className="layout__sidebar--left">
-        <FileExplorer
-          sequences={sequences}
-          selectedId={activeId}
-          onSelect={selectSequence}
-          onOpenSelected={handleOpenSelected}
+      <div style={{ gridArea: 'sidebar-left / sidebar-left / canvas / canvas', display: 'flex', width: '100%', height: '100%', overflow: 'hidden' }}>
+        <SplitPane
+          defaultLeftWidth={240}
+          minLeftWidth={180}
+          maxLeftWidth={400}
+          left={
+            <aside className="layout__sidebar--left" style={{ width: '100%' }}>
+              <FileExplorer
+                sequences={sequences}
+                selectedId={activeId}
+                onSelect={selectSequence}
+                onOpenSelected={handleOpenSelected}
+              />
+            </aside>
+          }
+          right={
+            <main className="layout__canvas">
+              <DocumentTabs tabs={[]} activeId="" onSelect={() => {}} />
+              <SequenceViewer sequence={activeSequence} onChange={setActiveSequence} onCreateSequence={handleCreateSequence} />
+            </main>
+          }
         />
-      </aside>
-      <main className="layout__canvas">
-        <SequenceViewer sequence={activeSequence} onChange={setActiveSequence} onCreateSequence={handleCreateSequence} />
-      </main>
+      </div>
       <aside className="layout__sidebar--right">
         <PartsLibrary parts={parts} />
       </aside>
-      <footer className="layout__status-bar" data-testid="status-bar">
-        <StatusBar message="Ready" />
-      </footer>
+      <StatusBar message="Ready" />
     </div>
   );
 }
+

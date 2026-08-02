@@ -7,7 +7,7 @@
 :root {
   /* Layout */
   --layout-nav-rail-width: 56px;
-  --layout-sidebar-width: 240px;
+  --layout-sidebar-width: 280px;
   --layout-right-sidebar-width: 280px;
   --layout-status-bar-height: var(--space-24, 24px);
   --layout-header-height: 48px;
