@@ -57,7 +57,8 @@ export default function App() {
       setActiveId(opened.id);
       setActiveSequence(opened);
     } catch (err: any) {
-      window.alert(`Open failed: ${err?.message ?? err}`);
+      const detail = err?.message_user ?? err?.message_dev ?? err?.message ?? JSON.stringify(err);
+      window.alert(`Open failed: ${detail}`);
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }

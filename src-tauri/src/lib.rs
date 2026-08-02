@@ -489,7 +489,18 @@ async fn open_sequence(
     sidecar: tauri::State<'_, Arc<SidecarManager>>,
     target_path: String,
 ) -> Result<Sequence, SidecarError> {
-    let payload = serde_json::json!({"target_path": target_path});
+    // If target_path is just a bare filename, try test_data/ as a fallback.
+    let resolved = if std::path::Path::new(&target_path).is_absolute() || std::path::Path::new(&target_path).exists() {
+        target_path.clone()
+    } else {
+        let fallback = std::path::PathBuf::from("test_data").join(&target_path);
+        if fallback.exists() {
+            fallback.to_string_lossy().to_string()
+        } else {
+            target_path
+        }
+    };
+    let payload = serde_json::json!({"target_path": resolved});
     let result = send_sidecar_request(&sidecar, "open_sequence", payload).await?;
 
     Ok(Sequence {
