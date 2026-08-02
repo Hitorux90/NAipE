@@ -1,6 +1,7 @@
 // src/components/PartsLibrary.tsx
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { getIcon } from '../utils/icons';
 
 type Part = { id: string; name: string; category?: string; length_bp?: number };
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 export default function PartsLibrary({ parts: externalParts, onAddToConstruct }: Props) {
   const [parts, setParts] = useState<Part[]>(externalParts ?? []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const LibraryIcon = getIcon('library');
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +54,7 @@ export default function PartsLibrary({ parts: externalParts, onAddToConstruct }:
   return (
     <div className="panel">
       <div className="panel__header">
+        <LibraryIcon size={16} />
         <h3 className="panel__title">Parts Library</h3>
       </div>
       <ul className="parts-list">

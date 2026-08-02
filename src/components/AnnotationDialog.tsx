@@ -29,7 +29,7 @@ export default function AnnotationDialog({ open, constructPartId, defaultStart =
   const [start, setStart] = useState(`${defaultStart}`);
   const [end, setEnd] = useState(`${defaultEnd}`);
   const [strand, setStrand] = useState('1');
-  const [color, setColor] = useState('#ff0000');
+  const [color, setColor] = useState('var(--color-annotation-default)');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,7 +71,7 @@ export default function AnnotationDialog({ open, constructPartId, defaultStart =
 
   return (
     <div className="dialog-backdrop" onClick={onClose}>
-      <form className="dialog" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
+      <form className="dialog" role="dialog" aria-modal="true" aria-label="Add annotation" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <h4>Add annotation</h4>
         <label>
           Name
@@ -105,7 +105,7 @@ export default function AnnotationDialog({ open, constructPartId, defaultStart =
           Color
           <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
         </label>
-        {error && <p className="error">{error}</p>}
+        {error && <p className="error" role="alert">{error}</p>}
         <div className="dialog-actions">
           <button type="button" className="button button--secondary" onClick={onClose} disabled={saving}>Cancel</button>
           <button type="submit" className="button button--primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>

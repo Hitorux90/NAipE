@@ -168,14 +168,6 @@
   background: var(--color-hover-bg, #E5E7EB);
 }
 
-.file-item--active {
-  background: var(--color-active-bg, #D1D5DB);
-}
-
-.file-item--active:hover {
-  background: var(--file-item-hover-active, #C7CBD2);
-}
-
 .file-item:focus-visible {
   outline: var(--outline-focus-width, 2px) solid var(--outline-focus-color, #2563EB);
   outline-offset: calc(-1 * var(--outline-focus-width, 2px));
@@ -250,6 +242,12 @@
   margin: 0 0 var(--space-12, 12px) 0;
 }
 
+.canvas__meta {
+  font-size: var(--font-size-sm, 12px);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-8);
+}
+
 .status {
   font-size: var(--font-size-base, 13px);
   color: var(--color-text-primary, #111827);
@@ -289,16 +287,228 @@
   color: var(--color-text-secondary, #6B7280);
 }
 
+/* File list active accent */
+.file-item--active {
+  background: var(--color-active-bg, #D1D5DB);
+  border-left: 3px solid var(--color-primary-accent, #2563EB);
+}
+
+.file-item--active:hover {
+  background: var(--file-item-hover-active, #C7CBD2);
+}
+
 /* Drag-and-drop feedback */
 .construct-canvas.drag-over {
   background: var(--color-bg-hover, #E5E7EB);
   border: 2px dashed var(--color-primary-accent, #2563EB);
 }
 
-/* File list active accent */
-.file-item--active {
-  background: var(--color-active-bg, #D1D5DB);
-  border-left: 3px solid var(--color-primary-accent, #2563EB);
+/* === D-01 AnnotationDialog === */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal, 300);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  animation: dialog-backdrop-in var(--transition-normal, 200ms) ease-out;
+}
+
+@keyframes dialog-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.dialog {
+  background: var(--color-bg-canvas, #FFFFFF);
+  border: 1px solid var(--color-border-subtle, #E5E7EB);
+  border-radius: 8px;
+  padding: var(--space-24, 24px);
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16, 16px);
+  animation: dialog-slide-in var(--transition-normal, 200ms) ease-out;
+}
+
+@keyframes dialog-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dialog h4 {
+  margin: 0;
+  font-size: var(--font-size-md, 14px);
+  font-weight: var(--font-weight-section-header, 600);
+  color: var(--color-text-primary, #111827);
+}
+
+.dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 4px);
+  font-size: var(--font-size-sm, 12px);
+  font-weight: 500;
+  color: var(--color-text-secondary, #6B7280);
+}
+
+.dialog .input,
+.dialog .select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dialog input[type="color"] {
+  height: 32px;
+  width: 48px;
+  padding: var(--space-2, 2px);
+  border: 1px solid var(--color-border-subtle, #E5E7EB);
+  border-radius: 6px;
+  cursor: pointer;
+  background: var(--color-bg-canvas, #FFFFFF);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8, 8px);
+  margin-top: var(--space-8, 8px);
+}
+
+.error {
+  color: var(--color-danger, #DC2626);
+  background: var(--color-danger-bg, #FEF2F2);
+  padding: var(--space-8, 8px) var(--space-12, 12px);
+  border-radius: 6px;
+  font-size: var(--font-size-sm, 12px);
+  margin: 0;
+}
+
+/* === D-02 AssemblyCanvas & D-10 ConstructViewer (shared) === */
+
+/* .construct-editor — .panel already provides the shell */
+.construct-editor {}
+
+/* .construct-viewer — .panel provides the shell */
+.construct-viewer {}
+
+.construct-canvas {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-8, 8px);
+  padding: var(--space-12, 12px);
+  min-height: 80px;
+  border: 1px solid var(--color-border-subtle, #E5E7EB);
+  border-radius: 6px;
+  background: var(--color-bg-canvas, #FFFFFF);
+  margin: var(--space-8, 8px);
+  overflow: auto;
+}
+
+.construct-part-tile {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 2px);
+  min-width: 64px;
+  padding: var(--space-8, 8px) var(--space-12, 12px);
+  border-radius: 6px;
+  border: 1px solid var(--color-border-subtle, #E5E7EB);
+  background: var(--part-color, var(--color-part-default, #888888));
+  color: #FFFFFF;
+  font-size: var(--font-size-sm, 12px);
+  cursor: pointer;
+  transition:
+    transform var(--transition-fast, 100ms),
+    box-shadow var(--transition-fast, 100ms);
+}
+
+.construct-part-tile:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.construct-part-tile:focus-visible {
+  outline: var(--outline-focus-width, 2px) solid var(--outline-focus-color, #2563EB);
+  outline-offset: var(--outline-focus-offset, 2px);
+}
+
+.annotation-overlay {
+  position: absolute;
+  bottom: 2px;
+  left: var(--anno-left, 0%);
+  width: var(--anno-width, 100%);
+  height: 4px;
+  background: var(--anno-bg, var(--color-annotation-default, #ff0000));
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.part-label {
+  font-weight: 600;
+  font-size: var(--font-size-sm, 12px);
+  line-height: 1.2;
+}
+
+.part-coords {
+  font-size: var(--font-size-xs, 11px);
+  opacity: 0.8;
+  font-family: var(--font-family-sequence, monospace);
+}
+
+.construct-actions {
+  display: flex;
+  gap: var(--space-8, 8px);
+  padding: var(--space-8, 8px) var(--space-12, 12px);
+  border-top: 1px solid var(--color-border-subtle, #E5E7EB);
+}
+
+/* D-10: Construct metadata grid */
+.construct-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-4, 4px) var(--space-12, 12px);
+  padding: var(--space-12, 12px);
+  margin: 0;
+  font-size: var(--font-size-sm, 12px);
+  border-bottom: 1px solid var(--color-border-subtle, #E5E7EB);
+}
+
+.construct-meta dt {
+  color: var(--color-text-secondary, #6B7280);
+  font-weight: 600;
+}
+
+.construct-meta dd {
+  margin: 0;
+  color: var(--color-text-primary, #111827);
+}
+
+/* === D-03 CanvasToolPalette === */
+.tool-palette {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-4, 4px);
+  padding: var(--space-6, 6px) var(--space-8, 8px);
+  border-bottom: 1px solid var(--color-border-subtle, #E5E7EB);
+  background: var(--color-bg-sidebar, #F9FAFB);
+}
+
+.tool-palette__item--active {
+  background: var(--color-active-bg, #D1D5DB) !important;
+  color: var(--color-primary-accent, #2563EB);
+}
+
+.tool-palette__item--active:hover {
+  background: var(--color-active-bg, #D1D5DB) !important;
 }
 
 @media (forced-colors: none) {
@@ -332,76 +542,6 @@
     background: Highlight;
     color: HighlightText;
   }
-}
-
-/* ============================================================
-   Document Tabs
-   ============================================================ */
-
-.doc-tabs {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2, 2px);
-  padding: 0 var(--space-8, 8px);
-  height: var(--layout-tab-height, 36px);
-  background: var(--color-bg-sidebar, #F9FAFB);
-  border-bottom: 1px solid var(--color-border-subtle, #E5E7EB);
-  overflow-x: auto;
-  flex-shrink: 0;
-}
-
-.doc-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-6, 6px);
-  height: var(--layout-tab-height, 36px);
-  padding: 0 var(--space-12, 12px);
-  border: none;
-  border-right: 1px solid var(--color-border-subtle, #E5E7EB);
-  background: transparent;
-  color: var(--color-text-secondary, #6B7280);
-  font-size: var(--font-size-sm, 12px);
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: background var(--transition-fast, 100ms), color var(--transition-fast, 100ms);
-}
-
-.doc-tab:hover {
-  background: var(--color-hover-bg, #E5E7EB);
-  color: var(--color-text-primary, #111827);
-}
-
-.doc-tab--active {
-  background: var(--color-bg-canvas, #FFFFFF);
-  color: var(--color-text-primary, #111827);
-  border-bottom: 2px solid var(--color-primary-accent, #2563EB);
-  font-weight: 600;
-}
-
-.doc-tab__close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
-  opacity: 0.5;
-  transition: opacity var(--transition-fast, 100ms), background var(--transition-fast, 100ms);
-}
-
-.doc-tab:hover .doc-tab__close,
-.doc-tab--active .doc-tab__close {
-  opacity: 1;
-}
-
-.doc-tab__close:hover {
-  background: var(--color-hover-bg, #E5E7EB);
-}
-
-.doc-tab:focus-visible {
-  outline: var(--outline-focus-width, 2px) solid var(--outline-focus-color, #2563EB);
-  outline-offset: calc(-1 * var(--outline-focus-width, 2px));
 }
 
 /* ============================================================
