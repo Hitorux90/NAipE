@@ -194,31 +194,40 @@ impl SidecarRequest {
 
 /// Application-level response from the Python sidecar.
 ///
-/// Every response echoes the `request_id` from the corresponding request so
+/// Every response echoes the `id` from the corresponding request so
 /// that the correlation table can complete the waiting `oneshot::Sender`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SidecarResponse {
-    pub request_id: Uuid,
+    pub id: Uuid,
+    pub r#type: String,
+    pub command: String,
     pub ok: bool,
     pub result: Option<serde_json::Value>,
+    pub timestamp_ms: i64,
     pub offloaded: Option<OffloadedPayload>,
 }
 
 impl SidecarResponse {
-    pub fn ok(request_id: Uuid, result: serde_json::Value) -> Self {
+    pub fn ok(id: Uuid, result: serde_json::Value) -> Self {
         Self {
-            request_id,
+            id,
+            r#type: "response".into(),
+            command: "".into(),
             ok: true,
             result: Some(result),
+            timestamp_ms: 0,
             offloaded: None,
         }
     }
 
-    pub fn err(request_id: Uuid, message: impl Into<String>) -> Self {
+    pub fn err(id: Uuid, message: impl Into<String>) -> Self {
         Self {
-            request_id,
+            id,
+            r#type: "response".into(),
+            command: "".into(),
             ok: false,
             result: Some(serde_json::json!({ "error": message.into() })),
+            timestamp_ms: 0,
             offloaded: None,
         }
     }
@@ -505,7 +514,7 @@ impl SidecarManager {
     /// the associated oneshot channel. Invalid or unknown request IDs are
     /// logged and ignored, so a noisy peer cannot crash this sidecar.
     async fn fulfill(&self, response: SidecarResponse) {
-        let request_id = response.request_id;
+        let request_id = response.id;
         let sender = {
             let mut pending = self.pending.lock().await;
             pending.remove(&request_id)
@@ -563,7 +572,7 @@ impl SidecarManager {
                                 match serde_json::from_str::<serde_json::Value>(trimmed) {
                                     Ok(value) => {
                                         if let Ok(resp) = serde_json::from_value::<SidecarResponse>(value.clone()) {
-                                            let request_id = resp.request_id;
+                                            let request_id = resp.id;
                                             let sender = {
                                                 let mut pending = pending.lock().await;
                                                 pending.remove(&request_id)
@@ -581,12 +590,15 @@ impl SidecarManager {
                                             ) {
                                                 if let Ok(request_id) = Uuid::parse_str(id_str) {
                                                     let resp = SidecarResponse {
-                                                        request_id,
+                                                        id: request_id,
+                                                        r#type: "response".into(),
+                                                        command: "".into(),
                                                         ok: ok_flag,
                                                         result: Some(payload.clone()),
+                                                        timestamp_ms: 0,
                                                         offloaded: None,
                                                     };
-                                                    let request_id = resp.request_id;
+                                                    let request_id = resp.id;
                                                     let sender = {
                                                         let mut pending = pending.lock().await;
                                                         pending.remove(&request_id)
@@ -785,6 +797,23 @@ mod tests {
         );
         // No indentation/blanks.
         assert!(text.find("  ").is_none(), "no indentation allowed");
+    }
+
+    #[test]
+    fn sidecar_response_envelope_fields() {
+        let id = Uuid::new_v4();
+        let resp = SidecarResponse::ok(id, serde_json::json!({"test": 123}));
+        let text = serialize_ndjson(&resp).expect("serialize");
+        assert!(text.contains(&format!("\"id\":\"{}\"", id)));
+        assert!(text.contains("\"type\":\"response\""));
+        assert!(text.contains("\"command\":\"\""));
+        assert!(text.contains("\"ok\":true"));
+
+        let back: SidecarResponse = deserialize_ndjson(&text).expect("deserialize");
+        assert_eq!(back.id, id);
+        assert_eq!(back.r#type, "response");
+        assert_eq!(back.command, "");
+        assert_eq!(back.ok, true);
     }
 
     #[test]
