@@ -143,10 +143,8 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
 
   if (!sequence) {
     return (
-      <div className="panel">
-        <div className="panel__header">
-          <h3 className="panel__title">Sequence Viewer</h3>
-        </div>
+      <div className="canvas__empty">
+        <h3 className="canvas__title">Sequence Viewer</h3>
         <label>
           Name:{' '}
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="MySequence" />
@@ -171,10 +169,8 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
   }
 
   return (
-    <div className="panel">
-      <div className="panel__header">
-        <h3 className="panel__title">Sequence Viewer</h3>
-      </div>
+    <div className="canvas__content">
+      <h3 className="canvas__title">Sequence Viewer</h3>
       <label>
         Name:{' '}
         <input className="input" value={sequence.name} onChange={(e) => onChange({ ...sequence, name: e.target.value })} />

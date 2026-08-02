@@ -9,8 +9,6 @@
   align-items: center;
   gap: var(--space-4, 4px);
   padding: 8px 0;
-  background: var(--color-bg-rail, #F3F4F6);
-  border-right: 1px solid var(--color-border-subtle, #E5E7EB);
   z-index: var(--z-rail, 100);
 }
 
