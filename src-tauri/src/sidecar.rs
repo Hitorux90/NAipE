@@ -349,6 +349,12 @@ impl SidecarManager {
         // Use unbuffered lines in Python (`-u`) so newlines reach the
         // parent immediately and per-line framing stays consistent.
         .arg("-u")
+        .current_dir(
+            std::env::current_dir()
+                .unwrap_or_else(|_| std::path::PathBuf::from("."))
+                .join("..")
+                .join(".."),
+        )
         // Pipes are mandatory; without them we cannot drive NDJSON.
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
