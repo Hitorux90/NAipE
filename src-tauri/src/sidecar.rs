@@ -343,10 +343,10 @@ impl SidecarManager {
         };
 
         if let Some(stdout) = stdout {
-            drop(stdout);
+            manager.spawn_stdout_reader(stdout, cancel.clone());
         }
         if let Some(stderr) = stderr {
-            drop(stderr);
+            manager.spawn_stderr_reader(stderr, cancel.clone());
         }
 
         Ok(manager)

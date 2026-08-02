@@ -12,7 +12,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--space-12, 12px);
-  font-size: var(--font-size-ui-small, 12px);
+  font-size: var(--font-size-sm, 12px);
   color: var(--color-text-secondary, #6B7280);
 }
 

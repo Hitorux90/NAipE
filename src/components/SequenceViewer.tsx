@@ -11,6 +11,12 @@ interface Props {
   onCreateSequence?: (created: Sequence) => void;
 }
 
+function statusVariant(status: string): string {
+  const lower = status.toLowerCase();
+  if (lower.includes('fail') || lower.includes('required')) return ' status--error';
+  return ' status--success';
+}
+
 export default function SequenceViewer({ sequence, onChange, onCreateSequence }: Props) {
   const [name, setName] = useState('');
   const [sequenceText, setSequenceText] = useState('');
@@ -145,25 +151,26 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
     return (
       <div className="canvas__empty">
         <h3 className="canvas__title">Sequence Viewer</h3>
-        <label>
-          Name:{' '}
+        <div className="form-group">
+          <label className="form-label">Name</label>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="MySequence" />
-        </label>
-        <br />
-        <label>
-          Topology:{' '}
+        </div>
+        <div className="form-group">
+          <label className="form-label">Topology</label>
           <select className="select" value={topology} onChange={(e) => setTopology(e.target.value)}>
             <option value="circular">circular</option>
             <option value="linear">linear</option>
           </select>
-        </label>
-        <br />
-        <textarea className="textarea" value={sequenceText} onChange={(e) => setSequenceText(e.target.value)} rows={12} placeholder="Paste DNA sequence here..." />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Sequence</label>
+          <textarea className="textarea" value={sequenceText} onChange={(e) => setSequenceText(e.target.value)} rows={12} placeholder="Paste DNA sequence here..." />
+        </div>
         <hr className="separator" />
         <div className="button-group">
           <button id="new-sequence-btn" className="button button--primary" onClick={createSequence}>New sequence</button>
         </div>
-        {status && <p className="status">{status}</p>}
+        {status && <p className={`status${statusVariant(status)}`}>{status}</p>}
       </div>
     );
   }
@@ -171,21 +178,24 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
   return (
     <div className="canvas__content">
       <h3 className="canvas__title">Sequence Viewer</h3>
-      <label>
-        Name:{' '}
+      <div className="form-group">
+        <label className="form-label">Name</label>
         <input className="input" value={sequence.name} onChange={(e) => onChange({ ...sequence, name: e.target.value })} />
-      </label>
-      <br />
-      Length: {sequence.length_bp} bp | Topology: {sequence.topology}
-      <br />
-      <textarea className="textarea" value={sequence.sequence} onChange={(e) => onChange({ ...sequence, sequence: e.target.value, length_bp: e.target.value.length })} rows={12} />
+      </div>
+      <p className="canvas__meta">
+        Length: {sequence.length_bp} bp | Topology: {sequence.topology}
+      </p>
+      <div className="form-group">
+        <label className="form-label">Sequence</label>
+        <textarea className="textarea" value={sequence.sequence} onChange={(e) => onChange({ ...sequence, sequence: e.target.value, length_bp: e.target.value.length })} rows={12} />
+      </div>
       <hr className="separator" />
       <div className="button-group">
         <button id="save-dna-btn" className="button button--secondary" onClick={saveDna}><Dna size={16} /> Save as .dna</button>
         <button id="save-fasta-btn" className="button button--secondary" onClick={saveFasta}><FileText size={16} /> Save as .fasta</button>
         <button id="save-gb-btn" className="button button--secondary" onClick={saveGb}><BookOpen size={16} /> Save as .gb</button>
       </div>
-      {status && <p className="status">{status}</p>}
+      {status && <p className={`status${statusVariant(status)}`}>{status}</p>}
     </div>
   );
 }
