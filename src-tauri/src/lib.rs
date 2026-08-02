@@ -387,7 +387,7 @@ async fn open_sequence(
     let result = send_sidecar_request(&sidecar, "open_sequence", payload).await?;
 
     Ok(Sequence {
-        id: 0,
+        id: result.get("id").and_then(|v| v.as_i64()).unwrap_or_default(),
         name: result.get("name").and_then(|v| v.as_str()).unwrap_or("unnamed").to_string(),
         sequence: result.get("sequence").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
         topology: result.get("topology").and_then(|v| v.as_str()).unwrap_or("circular").to_string(),
