@@ -696,16 +696,18 @@ impl SidecarManager {
         // will see a oneshot-disconnect error and should retry.
         self.pending.lock().await.clear();
 
-        // Kill the old child.
-        let mut child_guard = self.child.lock().expect("child mutex poisoned");
-        if let Some(mut child) = child_guard.take() {
-        // Close stdin to signal the Python sidecar.
-        let _ = child.stdin.take();
-        // 2-second grace period before hard kill.
-        let _ = time::timeout(Duration::from_secs(2), child.wait()).await;
-        let _ = child.kill().await;
+        // Kill the old child. Take ownership then drop the lock before any await.
+        let old_child = {
+            let mut child_guard = self.child.lock().expect("child mutex poisoned");
+            child_guard.take()
+        };
+        if let Some(mut child) = old_child {
+            // Close stdin to signal the Python sidecar.
+            let _ = child.stdin.take();
+            // 2-second grace period before hard kill.
+            let _ = time::timeout(Duration::from_secs(2), child.wait()).await;
+            let _ = child.kill().await;
         }
-        drop(child_guard);
 
         // Replace the cancellation token so new readers get a fresh one.
         let new_cancel = CancellationToken::new();

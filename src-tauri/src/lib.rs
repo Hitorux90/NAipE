@@ -18,6 +18,7 @@ use std::path::PathBuf;
 use tauri::Manager;
 use chrono::Utc;
 use std::sync::Mutex;
+use std::sync::Arc;
 use undo::{UndoManager, UndoEntry};
 use uuid::Uuid;
 
@@ -102,11 +103,11 @@ impl std::fmt::Display for SidecarError {
 impl std::error::Error for SidecarError {}
 
 async fn send_sidecar_request(
-    state: &tauri::State<'_, SidecarManager>,
+    state: &tauri::State<'_, Arc<SidecarManager>>,
     command: &str,
     payload: serde_json::Value,
 ) -> Result<serde_json::Value, SidecarError> {
-    let manager = state.inner();
+    let manager = state.inner().as_ref();
     let req = SidecarRequest::new(Uuid::new_v4(), command)
         .with_payload(payload)
         .with_timestamp_ms(Utc::now().timestamp_millis());
@@ -222,12 +223,20 @@ pub fn run() {
                 .await;
 
                 let sidecar_manager = match sidecar_result {
-                    Ok(manager) => manager,
+                    Ok(manager) => Arc::new(manager),
                     Err(err) => {
                         eprintln!("[ApE] failed to start sidecar: {err}");
                         return Ok(());
                     }
                 };
+
+                // Spawn background health loop to detect and recover from sidecar crashes.
+                let sidecar_for_health = Arc::clone(&sidecar_manager);
+                tauri::async_runtime::spawn(async move {
+                    sidecar_for_health.run_health_loop(|err_env| {
+                        tracing::error!(code=%err_env.code, msg=%err_env.message, "Sidecar health error");
+                    }).await;
+                });
 
                 app.manage(pool);
                 app.manage(sidecar_manager);
@@ -319,7 +328,7 @@ async fn save_fasta(
 
 #[tauri::command]
 async fn open_file(
-    sidecar: tauri::State<'_, SidecarManager>,
+    sidecar: tauri::State<'_, Arc<SidecarManager>>,
     target_path: String,
 ) -> Result<Sequence, SidecarError> {
     open_sequence(sidecar, target_path).await
@@ -356,7 +365,7 @@ async fn save_as_fasta(
 #[tauri::command]
 async fn save_as_gb(
     pool: tauri::State<'_, DbPool>,
-    sidecar: tauri::State<'_, SidecarManager>,
+    sidecar: tauri::State<'_, Arc<SidecarManager>>,
     sequence_id: i64,
     target_path: String,
 ) -> Result<String, SidecarError> {
@@ -380,7 +389,7 @@ async fn save_as_gb(
 
 #[tauri::command]
 async fn open_sequence(
-    sidecar: tauri::State<'_, SidecarManager>,
+    sidecar: tauri::State<'_, Arc<SidecarManager>>,
     target_path: String,
 ) -> Result<Sequence, SidecarError> {
     let payload = serde_json::json!({"target_path": target_path});
