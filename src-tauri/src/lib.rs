@@ -90,13 +90,17 @@ pub async fn save_fasta_to_file(
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct SidecarError {
-    pub error: String,
-    pub message: String,
+    pub error_code: String,
+    pub layer: String,
+    pub message_dev: String,
+    pub message_user: String,
+    pub recoverable: bool,
+    pub context: Option<serde_json::Value>,
 }
 
 impl std::fmt::Display for SidecarError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}|{}", self.error, self.message)
+        write!(f, "[{}] {}", self.error_code, self.message_dev)
     }
 }
 
@@ -115,8 +119,12 @@ async fn send_sidecar_request(
     match manager.send_request(req).await {
         Ok(SidecarResponse { ok: true, result, .. }) => {
             result.ok_or_else(|| SidecarError {
-                error: "INTERNAL_ERROR".into(),
-                message: "empty sidecar response".into(),
+                error_code: "INTERNAL_ERROR".into(),
+                layer: "tauri".into(),
+                message_dev: "empty sidecar response".into(),
+                message_user: "The operation could not be completed".into(),
+                recoverable: true,
+                context: None,
             })
         }
         Ok(SidecarResponse { ok: false, result, .. }) => {
@@ -124,23 +132,39 @@ async fn send_sidecar_request(
             if let Some(code) = detail.get("error").and_then(|v| v.as_str()) {
                 if let Some(msg) = detail.get("message").and_then(|v| v.as_str()) {
                     return Err(SidecarError {
-                        error: code.into(),
-                        message: msg.into(),
+                        error_code: code.into(),
+                        layer: "python".into(),
+                        message_dev: msg.into(),
+                        message_user: "An error occurred in sidecar operation".into(),
+                        recoverable: false,
+                        context: None,
                     });
                 }
                 return Err(SidecarError {
-                    error: code.into(),
-                    message: String::new(),
+                    error_code: code.into(),
+                    layer: "python".into(),
+                    message_dev: code.into(),
+                    message_user: "An error occurred in sidecar operation".into(),
+                    recoverable: false,
+                    context: None,
                 });
             }
             Err(SidecarError {
-                error: "INTERNAL_ERROR".into(),
-                message: "sidecar returned ok=false without error code".into(),
+                error_code: "INTERNAL_ERROR".into(),
+                layer: "tauri".into(),
+                message_dev: "sidecar returned ok=false without error code".into(),
+                message_user: "The operation could not be completed".into(),
+                recoverable: true,
+                context: None,
             })
         }
         Err(io_err) => Err(SidecarError {
-            error: "IO_ERROR".into(),
-            message: io_err.to_string(),
+            error_code: "IO_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: io_err.to_string(),
+            message_user: "Sidecar communication failed".into(),
+            recoverable: false,
+            context: None,
         }),
     }
 }
@@ -234,7 +258,7 @@ pub fn run() {
                 let sidecar_for_health = Arc::clone(&sidecar_manager);
                 tauri::async_runtime::spawn(async move {
                     sidecar_for_health.run_health_loop(|err_env| {
-                        tracing::error!(code=%err_env.code, msg=%err_env.message, "Sidecar health error");
+                        tracing::error!(code=%err_env.error_code, msg=%err_env.message_dev, "Sidecar health error");
                     }).await;
                 });
 
@@ -260,7 +284,14 @@ async fn get_parts(state: tauri::State<'_, DbPool>) -> Result<Vec<Part>, Sidecar
     sqlx::query_as::<_, Part>(db::models::PartQueries::ALL)
         .fetch_all(&*state)
         .await
-        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+        .map_err(|e| SidecarError {
+            error_code: "DB_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "Database operation failed".into(),
+            recoverable: false,
+            context: None,
+        })
 }
 
 #[tauri::command]
@@ -272,7 +303,14 @@ async fn create_sequence(
 ) -> Result<Sequence, SidecarError> {
     inner_create_sequence(&*state, &name, &sequence, &topology)
         .await
-        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+        .map_err(|e| SidecarError {
+            error_code: "DB_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "Database operation failed".into(),
+            recoverable: false,
+            context: None,
+        })
 }
 
 #[tauri::command]
@@ -284,7 +322,14 @@ async fn new_sequence(
 ) -> Result<Sequence, SidecarError> {
     inner_create_sequence(&*state, &name, &sequence, &topology)
         .await
-        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+        .map_err(|e| SidecarError {
+            error_code: "DB_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "Database operation failed".into(),
+            recoverable: false,
+            context: None,
+        })
 }
 
 #[tauri::command]
@@ -292,7 +337,14 @@ async fn list_sequences(state: tauri::State<'_, DbPool>) -> Result<Vec<Sequence>
     sqlx::query_as::<_, Sequence>(db::models::SequenceQueries::ALL)
         .fetch_all(&*state)
         .await
-        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+        .map_err(|e| SidecarError {
+            error_code: "DB_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "Database operation failed".into(),
+            recoverable: false,
+            context: None,
+        })
 }
 
 #[tauri::command]
@@ -304,12 +356,26 @@ async fn save_dna(
     use std::path::Path;
     let path = Path::new(&target_path);
     if sequence_id == 0 {
-        return Err(SidecarError { error: "DB_ERROR".into(), message: "save_dna requires an existing sequence".into() });
+        return Err(SidecarError {
+            error_code: "DB_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: "save_dna requires an existing sequence".into(),
+            message_user: "Database operation failed".into(),
+            recoverable: false,
+            context: None,
+        });
     }
     save_dna_to_file(&*state, sequence_id, path)
         .await
         .map(|p| p.to_string_lossy().to_string())
-        .map_err(|e| SidecarError { error: "IO_ERROR".into(), message: e.to_string() })
+        .map_err(|e| SidecarError {
+            error_code: "IO_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "File operation failed".into(),
+            recoverable: false,
+            context: None,
+        })
 }
 
 #[tauri::command]
@@ -323,7 +389,14 @@ async fn save_fasta(
     save_fasta_to_file(&*state, sequence_id, path)
         .await
         .map(|p| p.to_string_lossy().to_string())
-        .map_err(|e| SidecarError { error: "IO_ERROR".into(), message: e.to_string() })
+        .map_err(|e| SidecarError {
+            error_code: "IO_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "File operation failed".into(),
+            recoverable: false,
+            context: None,
+        })
 }
 
 #[tauri::command]
@@ -345,7 +418,14 @@ async fn save_as_dna(
     save_dna_to_file(&*state, sequence_id, path)
         .await
         .map(|p| p.to_string_lossy().to_string())
-        .map_err(|e| SidecarError { error: "IO_ERROR".into(), message: e.to_string() })
+        .map_err(|e| SidecarError {
+            error_code: "IO_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "File operation failed".into(),
+            recoverable: false,
+            context: None,
+        })
 }
 
 #[tauri::command]
@@ -359,7 +439,14 @@ async fn save_as_fasta(
     save_fasta_to_file(&*state, sequence_id, path)
         .await
         .map(|p| p.to_string_lossy().to_string())
-        .map_err(|e| SidecarError { error: "IO_ERROR".into(), message: e.to_string() })
+        .map_err(|e| SidecarError {
+            error_code: "IO_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "File operation failed".into(),
+            recoverable: false,
+            context: None,
+        })
 }
 
 #[tauri::command]
@@ -373,7 +460,14 @@ async fn save_as_gb(
         .bind(sequence_id)
         .fetch_one(&*pool)
         .await
-        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })?;
+        .map_err(|e| SidecarError {
+            error_code: "DB_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "Database operation failed".into(),
+            recoverable: false,
+            context: None,
+        })?;
 
     let payload = serde_json::json!({
         "name": seq.name,
@@ -608,7 +702,14 @@ async fn create_construct(
 ) -> Result<i64, SidecarError> {
     db_create_construct(&*state, name, sequence_id)
         .await
-        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+        .map_err(|e| SidecarError {
+            error_code: "DB_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "Database operation failed".into(),
+            recoverable: false,
+            context: None,
+        })
 }
 
 #[tauri::command]
@@ -624,7 +725,14 @@ async fn add_part_to_construct(
 ) -> Result<i64, SidecarError> {
     db_add_part_to_construct(&*state, construct_id, part_id, start, end, strand, color, order)
         .await
-        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+        .map_err(|e| SidecarError {
+            error_code: "DB_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "Database operation failed".into(),
+            recoverable: false,
+            context: None,
+        })
 }
 
 #[tauri::command]
@@ -635,7 +743,14 @@ async fn save_construct(
 ) -> Result<String, SidecarError> {
     db_save_construct(&*pool, construct_id, target_path)
         .await
-        .map_err(|e| SidecarError { error: "IO_ERROR".into(), message: e.to_string() })
+        .map_err(|e| SidecarError {
+            error_code: "IO_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "File operation failed".into(),
+            recoverable: false,
+            context: None,
+        })
 }
 
 #[tauri::command]
@@ -644,7 +759,14 @@ async fn list_constructs(
 ) -> Result<Vec<serde_json::Value>, SidecarError> {
     db_list_constructs(&*state)
         .await
-        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+        .map_err(|e| SidecarError {
+            error_code: "DB_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "Database operation failed".into(),
+            recoverable: false,
+            context: None,
+        })
 }
 
 #[tauri::command]
@@ -654,7 +776,14 @@ async fn open_construct(
 ) -> Result<serde_json::Value, SidecarError> {
     db_open_construct(&*state, construct_id)
         .await
-        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+        .map_err(|e| SidecarError {
+            error_code: "DB_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "Database operation failed".into(),
+            recoverable: false,
+            context: None,
+        })
 }
 
 #[tauri::command]
@@ -670,7 +799,14 @@ async fn create_annotation(
 ) -> Result<i64, SidecarError> {
     db_create_annotation(&*state, construct_part_id, name, feature_type, start, end, strand, color)
         .await
-        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+        .map_err(|e| SidecarError {
+            error_code: "DB_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "Database operation failed".into(),
+            recoverable: false,
+            context: None,
+        })
 }
 
 #[tauri::command]
@@ -680,7 +816,14 @@ async fn list_annotations(
 ) -> Result<Vec<serde_json::Value>, SidecarError> {
     db_list_annotations(&*state, construct_part_id)
         .await
-        .map_err(|e| SidecarError { error: "DB_ERROR".into(), message: e.to_string() })
+        .map_err(|e| SidecarError {
+            error_code: "DB_ERROR".into(),
+            layer: "tauri".into(),
+            message_dev: e.to_string(),
+            message_user: "Database operation failed".into(),
+            recoverable: false,
+            context: None,
+        })
 }
 
 #[tauri::command]
@@ -688,7 +831,14 @@ async fn undo(
     state: tauri::State<'_, Mutex<UndoManager>>,
     sequence_id: i64,
 ) -> Result<Option<UndoEntry>, SidecarError> {
-    let mut manager = state.lock().map_err(|e| SidecarError { error: "LOCK_ERROR".into(), message: e.to_string() })?;
+    let mut manager = state.lock().map_err(|e| SidecarError {
+        error_code: "LOCK_ERROR".into(),
+        layer: "tauri".into(),
+        message_dev: e.to_string(),
+        message_user: "Lock acquisition failed".into(),
+        recoverable: false,
+        context: None,
+    })?;
     Ok(manager.undo(sequence_id))
 }
 
@@ -697,6 +847,13 @@ async fn redo(
     state: tauri::State<'_, Mutex<UndoManager>>,
     sequence_id: i64,
 ) -> Result<Option<UndoEntry>, SidecarError> {
-    let mut manager = state.lock().map_err(|e| SidecarError { error: "LOCK_ERROR".into(), message: e.to_string() })?;
+    let mut manager = state.lock().map_err(|e| SidecarError {
+        error_code: "LOCK_ERROR".into(),
+        layer: "tauri".into(),
+        message_dev: e.to_string(),
+        message_user: "Lock acquisition failed".into(),
+        recoverable: false,
+        context: None,
+    })?;
     Ok(manager.redo(sequence_id))
 }
