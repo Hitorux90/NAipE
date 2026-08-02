@@ -86,7 +86,7 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
         start,
         end: start + 10,
         strand: 1,
-        color: '#888888',
+        color: 'var(--color-part-default)',
         order: parts.length,
       });
       await load();
@@ -102,7 +102,8 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
     setSaving(true);
     setError(null);
     try {
-      const target = `C:\\ApE\\src-tauri\\target\\debug\\construct_${constructId}.dna`;
+      /* TODO: use Tauri dialog.save() API — needs @tauri-apps/plugin-dialog */
+      const target = `construct_${constructId}.dna`;
       await invoke('save_construct', { constructId: Number(constructId), targetPath: target });
       setSaveMsg('Saved');
       setTimeout(() => setSaveMsg(null), 1500);
@@ -134,7 +135,7 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
             key={p.id}
             className="construct-part-tile"
             style={{
-              '--part-color': p.color ?? '#888',
+              '--part-color': p.color ?? 'var(--color-part-default)',
               '--part-order': p.order,
             } as React.CSSProperties}
             onClick={() => handlePartClick(p.id)}
@@ -146,7 +147,7 @@ export default function AssemblyCanvas({ constructId, onSave }: Props) {
                 key={a.id}
                 className="annotation-overlay"
                 style={{
-                  '--anno-bg': a.color ?? '#ff0000',
+                  '--anno-bg': a.color ?? 'var(--color-annotation-default)',
                   '--anno-left': `${((a.start - p.start) / (p.end - p.start || 1)) * 100}%`,
                   '--anno-width': `${((a.end - a.start) / (p.end - p.start || 1)) * 100}%`,
                 } as React.CSSProperties}

@@ -4,6 +4,7 @@
    ============================================================ */
 
 .layout__status-bar {
+  grid-column: 1 / -1;
   grid-area: status-bar;
   height: var(--layout-status-bar-height, 24px);
   background: var(--color-bg-status, #F9FAFB);

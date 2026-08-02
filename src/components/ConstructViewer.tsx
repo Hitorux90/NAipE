@@ -90,7 +90,7 @@ export default function ConstructViewer({ constructId }: Props) {
             key={part.id}
             className="construct-part-tile"
             style={{
-              '--part-color': part.color ?? '#888',
+              '--part-color': part.color ?? 'var(--color-part-default)',
               '--part-order': part.order,
             } as React.CSSProperties}
             title={`${part.part_id}: ${part.start}-${part.end}${part.strand < 0 ? ' reverse' : ''}`}

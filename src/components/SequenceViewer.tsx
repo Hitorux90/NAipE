@@ -104,7 +104,8 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
     const current = sequence;
     if (!current) return;
     try {
-      const fallback = `C:\\ApE\\src-tauri\\target\\debug\\${encodeURIComponent(current.name)}.dna`;
+      /* TODO: use Tauri dialog.save() API — needs @tauri-apps/plugin-dialog */
+      const fallback = `${encodeURIComponent(current.name)}.dna`;
       const out = await invoke<string>('save_dna', {
         sequenceId: Number(current.id),
         targetPath: fallback,
@@ -120,7 +121,8 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
     const current = sequence;
     if (!current) return;
     try {
-      const fallback = `C:\\ApE\\src-tauri\\target\\debug\\${encodeURIComponent(current.name)}.fasta`;
+      /* TODO: use Tauri dialog.save() API — needs @tauri-apps/plugin-dialog */
+      const fallback = `${encodeURIComponent(current.name)}.fasta`;
       const out = await invoke<string>('save_as_fasta', {
         sequenceId: Number(current.id),
         targetPath: fallback,
@@ -136,7 +138,8 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
     const current = sequence;
     if (!current) return;
     try {
-      const fallback = `C:\\ApE\\src-tauri\\target\\debug\\${encodeURIComponent(current.name)}.gb`;
+      /* TODO: use Tauri dialog.save() API — needs @tauri-apps/plugin-dialog */
+      const fallback = `${encodeURIComponent(current.name)}.gb`;
       const out = await invoke<string>('save_as_gb', {
         sequenceId: Number(current.id),
         targetPath: fallback,

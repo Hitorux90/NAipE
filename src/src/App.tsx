@@ -7,6 +7,7 @@ import DocumentTabs from '../components/DocumentTabs';
 import NavRail from '../components/NavRail';
 import StatusBar from '../components/StatusBar';
 import SplitPane from '../components/SplitPane';
+import EmptyState from '../components/EmptyState';
 
 type Sequence = { id: string; name: string; sequence: string; length_bp: number; topology: string };
 
@@ -15,6 +16,7 @@ export default function App() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [parts, setParts] = useState<{ id: string; name: string }[]>([]);
   const [activeSequence, setActiveSequence] = useState<Sequence | null>(null);
+  const [navSection, setNavSection] = useState<'sequences' | 'constructs'>('sequences');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectSequence = (id: string) => {
@@ -71,7 +73,14 @@ export default function App() {
         onChange={handleFileChange}
       />
       <aside className="layout__rail" data-testid="nav-rail">
-        <NavRail items={[{id:'sequences',icon:'dna',label:'DNA'},{id:'constructs',icon:'library',label:'Parts'}]} activeId="sequences" onSelect={() => {}} />
+        <NavRail
+          items={[
+            { id: 'sequences', icon: 'dna', label: 'DNA' },
+            { id: 'constructs', icon: 'library', label: 'Parts' },
+          ]}
+          activeId={navSection}
+          onSelect={(id) => setNavSection(id as 'sequences' | 'constructs')}
+        />
       </aside>
       <div className="layout__content">
         <SplitPane
@@ -81,12 +90,18 @@ export default function App() {
           maxSize={400}
           left={
             <aside className="layout__sidebar--left">
-              <FileExplorer
-                sequences={sequences}
-                selectedId={activeId}
-                onSelect={selectSequence}
-                onOpenSelected={handleOpenSelected}
-              />
+              {navSection === 'sequences' ? (
+                <FileExplorer
+                  sequences={sequences}
+                  selectedId={activeId}
+                  onSelect={selectSequence}
+                  onOpenSelected={handleOpenSelected}
+                />
+              ) : (
+                <div className="panel">
+                  <EmptyState message="Construct view not yet implemented" />
+                </div>
+              )}
             </aside>
           }
           right={
@@ -97,7 +112,9 @@ export default function App() {
               maxSize={480}
               left={
                 <main className="layout__canvas">
-                  <DocumentTabs tabs={[]} activeId="" onSelect={() => {}} />
+                  {sequences.length > 0 && (
+                    <DocumentTabs tabs={sequences.map((s) => ({ id: s.id, label: s.name }))} activeId={activeId ?? ''} onSelect={selectSequence} />
+                  )}
                   <SequenceViewer sequence={activeSequence} onChange={setActiveSequence} onCreateSequence={handleCreateSequence} />
                 </main>
               }

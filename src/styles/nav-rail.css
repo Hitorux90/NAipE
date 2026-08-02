@@ -8,7 +8,7 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-4, 4px);
-  padding: 8px 0;
+  padding: var(--space-8, 8px) 0;
   z-index: var(--z-rail, 100);
 }
 
@@ -19,7 +19,7 @@
   justify-content: center;
   gap: var(--space-4, 4px);
   width: 100%;
-  height: var(--sidebar-item-height, 28px);
+  height: auto; min-height: 44px; padding: var(--space-6) 0;
   border: none;
   background: transparent;
   color: var(--color-text-secondary, #6B7280);
