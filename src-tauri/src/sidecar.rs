@@ -562,6 +562,31 @@ impl SidecarManager {
                                             } else {
                                                 tracing::warn!(%request_id, "unmatched response received");
                                             }
+                                        } else if let Ok(flat) = serde_json::from_value::<serde_json::Value>(value.clone()) {
+                                            if let (Some(id_str), Some(ok_flag), Some(payload)) = (
+                                                flat.get("id").and_then(|v| v.as_str()),
+                                                flat.get("ok").and_then(|v| v.as_bool()),
+                                                flat.get("payload"),
+                                            ) {
+                                                if let Ok(request_id) = Uuid::parse_str(id_str) {
+                                                    let resp = SidecarResponse {
+                                                        request_id,
+                                                        ok: ok_flag,
+                                                        result: Some(payload.clone()),
+                                                        offloaded: None,
+                                                    };
+                                                    let request_id = resp.request_id;
+                                                    let sender = {
+                                                        let mut pending = pending.lock().await;
+                                                        pending.remove(&request_id)
+                                                    };
+                                                    if let Some(tx) = sender {
+                                                        let _ = tx.send(Ok(resp));
+                                                    } else {
+                                                        tracing::warn!(%request_id, "unmatched flat response received");
+                                                    }
+                                                }
+                                            }
                                         } else if let Ok(envelope) =
                                             serde_json::from_value::<SidecarErrorEnvelope>(value)
                                         {

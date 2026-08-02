@@ -75,7 +75,7 @@ export default function App() {
       </aside>
       <div style={{ gridArea: 'sidebar-left / sidebar-left / canvas / canvas', display: 'flex', width: '100%', height: '100%', overflow: 'hidden' }}>
         <SplitPane
-          defaultLeftWidth={240}
+          defaultLeftWidth={280}
           minLeftWidth={180}
           maxLeftWidth={400}
           left={
