@@ -239,19 +239,30 @@ impl SidecarResponse {
 /// encoded in a `SidecarResponse` with `ok = false`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SidecarErrorEnvelope {
-    /// Stability hint for UI/routers.
-    pub code: String,
-    pub message: String,
-    /// Optional machine-readable payload.
-    pub details: Option<serde_json::Value>,
+    pub error_code: String,
+    pub layer: String,
+    pub message_dev: String,
+    pub message_user: String,
+    pub recoverable: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context: Option<serde_json::Value>,
 }
 
 impl SidecarErrorEnvelope {
-    pub fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
+    pub fn new(
+        error_code: impl Into<String>,
+        layer: impl Into<String>,
+        message_dev: impl Into<String>,
+        message_user: impl Into<String>,
+        recoverable: bool,
+    ) -> Self {
         Self {
-        code: code.into(),
-        message: message.into(),
-        details: None,
+            error_code: error_code.into(),
+            layer: layer.into(),
+            message_dev: message_dev.into(),
+            message_user: message_user.into(),
+            recoverable,
+            context: None,
         }
     }
 }
@@ -443,8 +454,13 @@ impl SidecarManager {
         match self.health_ping().await {
             Ok(true) => {}
             Ok(false) | Err(_) => {
-                let envelope =
-                    SidecarErrorEnvelope::new("health_check_failed", "sidecar did not pong");
+                let envelope = SidecarErrorEnvelope::new(
+                    "SIDECAR_HEALTH_FAILED",
+                    "rust",
+                    "sidecar did not pong during health check",
+                    "Sidecar process is not responding. Attempting restart.",
+                    true,
+                );
                 on_error(envelope);
                 let _ = self.restart().await;
             }
@@ -549,7 +565,7 @@ impl SidecarManager {
         // Placeholder. The actual UI broadcast is owned by the Tauri command
         // layer and is wired in once the manager is attached to the app
         // state. Here we at least log so that ops debugging remains possible.
-        tracing::error!(code=%envelope.code, message=%envelope.message, "remote sidecar error");
+        tracing::error!(code=%envelope.error_code, message=%envelope.message_dev, "remote sidecar error");
     }
 
     /// Reads NDJSON lines from the provided `ChildStdout`, forwards parsed
@@ -603,7 +619,7 @@ impl SidecarManager {
                                         Some("error") => {
                                             match serde_json::from_value::<SidecarErrorEnvelope>(value) {
                                                 Ok(envelope) => {
-                                                    tracing::error!(code=%envelope.code, message=%envelope.message, "remote sidecar error");
+                                                    tracing::error!(code=%envelope.error_code, message=%envelope.message_dev, "remote sidecar error");
                                                 }
                                                 Err(e) => {
                                                     tracing::warn!(err=%e, line=%trimmed, "error envelope deserialization failed");

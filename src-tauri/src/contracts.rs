@@ -26,9 +26,12 @@ pub struct SidecarResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SidecarErrorEnvelope {
-    pub code: String,
-    pub message: String,
-    pub details: Option<serde_json::Value>,
+    pub error_code: String,
+    pub layer: String,
+    pub message_dev: String,
+    pub message_user: String,
+    pub recoverable: bool,
+    pub context: Option<serde_json::Value>,
 }
 
 // ---------------------------------------------------------------------------
