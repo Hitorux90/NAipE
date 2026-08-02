@@ -355,6 +355,9 @@ impl SidecarManager {
         // Use unbuffered lines in Python (`-u`) so newlines reach the
         // parent immediately and per-line framing stays consistent.
         .arg("-u")
+        // `CARGO_MANIFEST_DIR` always resolves to the crate root (src-tauri/),
+        // regardless of where cargo runs the binary from.
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
         // Pipes are mandatory; without them we cannot drive NDJSON.
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
