@@ -346,7 +346,13 @@ impl SidecarManager {
         args: &[impl AsRef<std::path::Path>],
         config: SidecarConfig,
     ) -> io::Result<Self> {
-        let mut child = Command::new(python_executable.as_ref())
+        let python_path = python_executable.as_ref().to_path_buf();
+        tracing::info!(
+            python=%python_path.display(),
+            cwd=%std::path::Path::new(env!("CARGO_MANIFEST_DIR")).display(),
+            "spawning sidecar"
+        );
+        let mut child = Command::new(&python_path)
         .args(
             args.iter()
                 .map(|p| p.as_ref().as_os_str().to_owned())
@@ -358,7 +364,6 @@ impl SidecarManager {
         // `CARGO_MANIFEST_DIR` always resolves to the crate root (src-tauri/),
         // regardless of where cargo runs the binary from.
         .current_dir(env!("CARGO_MANIFEST_DIR"))
-        // Pipes are mandatory; without them we cannot drive NDJSON.
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
