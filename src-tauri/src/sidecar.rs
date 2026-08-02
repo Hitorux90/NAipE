@@ -196,14 +196,20 @@ impl SidecarRequest {
 ///
 /// Every response echoes the `id` from the corresponding request so
 /// that the correlation table can complete the waiting `oneshot::Sender`.
+/// Response from the Python sidecar.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SidecarResponse {
     pub id: Uuid,
     pub r#type: String,
     pub command: String,
     pub ok: bool,
+    /// Python sidecar uses `payload`; Rust historically used `result`.
+    /// Both names are accepted on deserialization.
+    #[serde(alias = "payload")]
     pub result: Option<serde_json::Value>,
+    #[serde(default)]
     pub timestamp_ms: i64,
+    #[serde(default)]
     pub offloaded: Option<OffloadedPayload>,
 }
 
