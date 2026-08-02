@@ -294,12 +294,17 @@ pub struct SidecarManager {
     #[allow(dead_code)]
     stdin_writer: Mutex<Option<tokio::process::ChildStdin>>,
     /// Cancellation token shared by the stdout/stderr reader tasks.
-    cancel: CancellationToken,
+    /// Wrapped in a std Mutex so restart() can replace it atomically.
+    cancel: std::sync::Mutex<CancellationToken>,
     /// Configured thresholds and intervals.
     config: SidecarConfig,
     /// Temp files created to offload payloads larger than the threshold.
     /// Cleaned up on restart to avoid accumulating files.
     temp_files: Mutex<Vec<PathBuf>>,
+    /// Saved for respawn on restart().
+    python_executable: PathBuf,
+    /// Saved for respawn on restart().
+    args: Vec<PathBuf>,
 }
 
 impl SidecarManager {
@@ -331,22 +336,28 @@ impl SidecarManager {
         let stdout = child.stdout.take();
         let stderr = child.stderr.take();
 
+        let python_exec = python_executable.as_ref().to_path_buf();
+        let sidecar_args: Vec<PathBuf> = args.iter().map(|p| p.as_ref().to_path_buf()).collect();
         let cancel = CancellationToken::new();
 
         let manager = Self {
             child: std::sync::Mutex::new(Some(child)),
             pending: Arc::new(Mutex::new(HashMap::new())),
             stdin_writer: Mutex::new(stdin),
-            cancel: cancel.clone(),
+            cancel: std::sync::Mutex::new(cancel),
             config,
             temp_files: Mutex::new(Vec::new()),
+            python_executable: python_exec,
+            args: sidecar_args,
         };
 
         if let Some(stdout) = stdout {
-            manager.spawn_stdout_reader(stdout, cancel.clone());
+            let token = manager.cancel.lock().expect("cancel mutex poisoned").clone();
+            manager.spawn_stdout_reader(stdout, token);
         }
         if let Some(stderr) = stderr {
-            manager.spawn_stderr_reader(stderr, cancel.clone());
+            let token = manager.cancel.lock().expect("cancel mutex poisoned").clone();
+            manager.spawn_stderr_reader(stderr, token);
         }
 
         Ok(manager)
@@ -660,8 +671,8 @@ impl SidecarManager {
     /// moot once the child dies. It also cleans up temp files that were
     /// created during this run.
     pub async fn restart(&self) -> io::Result<()> {
-        // Cancel stdout/stderr reader tasks.
-        self.cancel.cancel();
+        // Cancel stdout/stderr reader tasks from the previous run.
+        self.cancel.lock().expect("cancel mutex poisoned").cancel();
 
         // Clean up temp files from the previous run.
         let mut temp_files = self.temp_files.lock().await;
@@ -671,33 +682,54 @@ impl SidecarManager {
         drop(temp_files);
 
         // Drop in-flight senders. Callers currently waiting on `send_request`
-        // will see a oneshot-disconnect error.
+        // will see a oneshot-disconnect error and should retry.
         self.pending.lock().await.clear();
 
-        // Replace child.
+        // Kill the old child.
         let mut child_guard = self.child.lock().expect("child mutex poisoned");
         if let Some(mut child) = child_guard.take() {
-            // Try a graceful shutdown before SIGKILL. This matters on Windows,
-            // where only `kill()` is always available. Poison the child's
-            // stdin so the Python sidecar notices.
+            // Close stdin to signal the Python sidecar.
             let _ = child.stdin.take();
-            // 2-second grace period.
+            // 2-second grace period before hard kill.
             let _ = time::timeout(Duration::from_secs(2), child.wait()).await;
             let _ = child.kill().await;
         }
         drop(child_guard);
 
-        // Cancel token is reused. Each spawn consumes a fresh token.
-        // We re-create a new CancellationToken for the new pair of reader
-        // tasks.
-        let _cancel = CancellationToken::new();
+        // Replace the cancellation token so new readers get a fresh one.
+        let new_cancel = CancellationToken::new();
+        *self.cancel.lock().expect("cancel mutex poisoned") = new_cancel.clone();
 
-        // NOTE: A real caller needs to re-evaluate `python_executable` and
-        // `args`. We do not store them on `SidecarManager` today, so we
-        // simply drop the old child. In a production form the constructor
-        // fields should be repeated here. Callers can handle this by
-        // constructing a brand-new `SidecarManager` from `new` instead.
-        tracing::warn!("restart requested; old child killed. Re-spawn must be performed by the caller.");
+        // Respawn the child process with the stored executable and args.
+        let mut new_child = Command::new(&self.python_executable)
+            .args(&self.args)
+            .arg("-u")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+
+        let new_stdin = new_child.stdin.take();
+        let new_stdout = new_child.stdout.take();
+        let new_stderr = new_child.stderr.take();
+
+        // Store the new child handle.
+        *self.child.lock().expect("child mutex poisoned") = Some(new_child);
+
+        // Re-wire stdin.
+        *self.stdin_writer.lock().await = new_stdin;
+
+        // Spawn new reader tasks with the fresh cancellation token.
+        if let Some(stdout) = new_stdout {
+            let token = self.cancel.lock().expect("cancel mutex poisoned").clone();
+            self.spawn_stdout_reader(stdout, token);
+        }
+        if let Some(stderr) = new_stderr {
+            let token = self.cancel.lock().expect("cancel mutex poisoned").clone();
+            self.spawn_stderr_reader(stderr, token);
+        }
+
+        tracing::info!("sidecar restarted successfully");
         Ok(())
     }
 
@@ -706,7 +738,7 @@ impl SidecarManager {
 impl Drop for SidecarManager {
     fn drop(&mut self) {
         // Ask reader tasks to exit.
-        self.cancel.cancel();
+        self.cancel.lock().expect("cancel mutex poisoned").cancel();
 
         // Best-effort: try to terminate the child so it does not outlive
         // this manager struct.
