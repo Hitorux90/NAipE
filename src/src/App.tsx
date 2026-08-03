@@ -9,7 +9,17 @@ import StatusBar from '../components/StatusBar';
 import SplitPane from '../components/SplitPane';
 import EmptyState from '../components/EmptyState';
 
-type Sequence = { id: string; name: string; sequence: string; length_bp: number; topology: string };
+type FeatureData = {
+  type: string;
+  start: number;
+  end: number;
+  strand: number;
+  name: string;
+  note: string;
+  color: string;
+};
+
+type Sequence = { id: string; name: string; sequence: string; length_bp: number; topology: string; features?: FeatureData[] };
 
 export default function App() {
   const [sequences, setSequences] = useState<Sequence[]>([]);
@@ -39,7 +49,7 @@ export default function App() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const result = await invoke<{ id: number; name: string; sequence: string; length_bp: number; topology: string }>('open_sequence', {
+      const result = await invoke<{ id: number; name: string; sequence: string; length_bp: number; topology: string; features?: FeatureData[] }>('open_sequence', {
         targetPath: (file as any).path || file.name,
       });
       const opened: Sequence = {
@@ -48,6 +58,7 @@ export default function App() {
         sequence: result.sequence,
         length_bp: result.length_bp,
         topology: result.topology,
+        features: result.features ?? [],
       };
       setSequences((prev) => {
         const exists = prev.find((s) => s.id === opened.id);
