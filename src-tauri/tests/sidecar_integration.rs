@@ -203,11 +203,10 @@ async fn test_multiple_commands_same_connection() {
 
     // Test each stub command with minimal payloads.
     let tests: &[(&str, serde_json::Value)] = &[
-        ("parse_ape", serde_json::json!({"content": "ATGC", "id": "x"})),
-        ("parse_gb", serde_json::json!({"content": "TACG", "id": "y"})),
-        ("digest", serde_json::json!({"sequence": "A", "enzymes": []})),
-        ("auto_annotate", serde_json::json!({"sequence": "A", "parts": []})),
-    ];
+            ("ping", serde_json::json!({})),
+            ("create_sequence", serde_json::json!({"name": "t", "sequence": "ATGC", "topology": "circular"})),
+            ("list_parts", serde_json::json!({})),
+        ];
 
     for (cmd, payload) in tests {
         let req = SidecarRequest::new(Uuid::new_v4(), *cmd).with_payload(payload.clone());

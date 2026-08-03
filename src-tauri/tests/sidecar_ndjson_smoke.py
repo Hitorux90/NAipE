@@ -746,3 +746,39 @@ def test_list_annotations(sidecar_proc_with_db):
     assert len(annotations) == 2
     names = {a["name"] for a in annotations}
     assert names == {"geneA", "promB"}
+
+
+def test_open_gb_returns_features(sidecar_proc):
+    """Opening a GenBank file must return a non-empty features array."""
+    msg_id = "test-open-gb-features"
+    send(
+        sidecar_proc,
+        {
+            "id": msg_id,
+            "type": "request",
+            "command": "open_sequence",
+            "payload": {"target_path": r"C:\ApE\src-tauri\test_data\pMG_SP-4_speB.gb"},
+        },
+    )
+    resp = read(sidecar_proc)
+    assert resp is not None
+    assert resp["ok"] is True
+    assert resp["command"] == "open_sequence"
+    payload = resp["payload"]
+    assert payload["name"] == "pMG36E-SP-4_speB"
+    assert payload["topology"] == "circular"
+    assert payload["length_bp"] == 4801
+    features = payload.get("features", [])
+    assert len(features) > 0, "GenBank features must not be empty"
+    f0 = features[0]
+    assert f0["type"] == "primer"
+    assert f0["start"] == 1
+    assert f0["end"] == 25
+    assert f0["strand"] == 1
+    assert f0["name"] == "pMG36E_speB_fw"
+    comp = next((f for f in features if f.get("name") == "Factor Xa site"), None)
+    assert comp is not None
+    assert comp["strand"] == -1
+    ori = next((f for f in features if f.get("name") == "ori"), None)
+    assert ori is not None
+    assert ori["color"] == "#ffef86"
