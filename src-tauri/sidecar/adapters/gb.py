@@ -6,7 +6,8 @@ def read_gb(path: str):
         text = fh.read()
 
     entry = {
-        "locus": _block_value(text, r"LOCUS\s+([^\s]+)"),
+        "name": _block_value(text, r"LOCUS\s+([^\s]+)"),
+        "topology": _topology(text),
         "definition": _block_value(text, r"DEFINITION\s+(.+)"),
         "accession": _block_value(text, r"ACCESSION\s+([^\s]+)"),
         "features": _parse_features(text),
@@ -65,6 +66,11 @@ def _block_value(text: str, pattern: str):
     return match.group(1).strip() if match else ""
 
 
+def _topology(text: str) -> str:
+    match = re.search(r"LOCUS\s+\S+\s+\d+\s+bp\s+\S+\s+(circular|linear)", text)
+    return match.group(1) if match else "circular"
+
+
 def _parse_features(text: str):
     features = []
     for raw_line in text.splitlines():
@@ -76,28 +82,52 @@ def _parse_features(text: str):
                 continue
             type_ = parts[0]
             location = parts[1] if len(parts) > 1 else "1..1"
-            current = {
-                "type": type_,
-                "start": 1,
-                "end": 1,
-                "note": "",
-            }
+
+            strand = 1
+            if "complement(" in location:
+                strand = -1
             bounds = location.replace("complement(", "").replace(")", "").split("..")
+            start = 1
+            end = 1
             if len(bounds) == 2:
                 try:
-                    current["start"] = int(bounds[0])
+                    start = int(bounds[0])
                 except ValueError:
                     pass
                 try:
-                    current["end"] = int(bounds[1])
+                    end = int(bounds[1])
                 except ValueError:
                     pass
+
+            current = {
+                "type": type_,
+                "start": start,
+                "end": end,
+                "strand": strand,
+                "name": "",
+                "note": "",
+                "color": "#888888",
+            }
             features.append(current)
             continue
 
         if raw_line.startswith("                     ") and stripped.startswith("/"):
-            if features:
-                features[-1]["note"] = stripped[6:].strip('"')
+            if not features:
+                continue
+            qual = stripped[1:]  # strip leading /
+            if "=" in qual:
+                key, val = qual.split("=", 1)
+                val = val.strip('"')
+                key = key.strip()
+                if key == "label":
+                    features[-1]["name"] = val
+                elif key == "note":
+                    features[-1]["note"] = val
+                elif key == "ApEinfo_fwdcolor":
+                    features[-1]["color"] = val
+            else:
+                # qualifier without value (e.g. /pseudo)
+                pass
             continue
 
     return features
