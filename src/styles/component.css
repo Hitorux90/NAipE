@@ -618,3 +618,54 @@
   color: var(--color-text-secondary, #6B7280);
   border-top: 1px solid var(--color-border-subtle, #E5E7EB);
 }
+
+/* ============================================================
+   Feature list (GenBank annotations)
+   ============================================================ */
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 4px);
+  margin-bottom: var(--space-12, 12px);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.feature-list__title {
+  font-size: var(--font-size-sm, 13px);
+  font-weight: 600;
+  color: var(--color-text-secondary, #6B7280);
+  margin: 0 0 var(--space-4, 4px) 0;
+}
+
+.feature-tile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8, 8px);
+  padding: var(--space-4, 4px) var(--space-8, 8px);
+  border-left: 3px solid var(--color-part-default, #888888);
+  background: var(--color-canvas, #FFFFFF);
+  border-radius: var(--radius-sm, 4px);
+  font-size: var(--font-size-ui-small, 12px);
+}
+
+.feature-tile__name {
+  font-weight: 600;
+  color: var(--color-text-primary, #111827);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feature-tile__range {
+  color: var(--color-text-secondary, #6B7280);
+  white-space: nowrap;
+}
+
+.feature-tile__type {
+  color: var(--color-text-tertiary, #9CA3AF);
+  font-style: italic;
+  white-space: nowrap;
+  margin-left: auto;
+}
