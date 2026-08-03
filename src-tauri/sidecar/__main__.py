@@ -214,6 +214,7 @@ def _handle_command(cmd, msg_id, payload):
         try:
             from sidecar.adapters import read_format
             data = read_format(target_path)
+            features = data.get("features", [])
             return {
                 "id": msg_id,
                 "type": "response",
@@ -223,6 +224,7 @@ def _handle_command(cmd, msg_id, payload):
                     "sequence": data.get("sequence", ""),
                     "topology": data.get("topology", "circular"),
                     "length_bp": data.get("length_bp", 0),
+                    "features": features,
                     "deprecated": True,
                 },
                 "ok": True,
