@@ -4,7 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getIcon } from '../utils/icons';
 import { Dna, FileText, BookOpen } from 'lucide-react';
 
-type Sequence = { id: string; name: string; sequence: string; length_bp: number; topology: string };
+type Sequence = { id: string; name: string; sequence: string; length_bp: number; topology: string; features?: any[] };
 interface Props {
   sequence: Sequence | null;
   onChange: (updated: Sequence) => void;
@@ -188,6 +188,18 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
       <p className="canvas__meta">
         Length: {sequence.length_bp} bp | Topology: {sequence.topology}
       </p>
+      {sequence.features && sequence.features.length > 0 && (
+        <div className="feature-list">
+          <h4 className="feature-list__title">Features ({sequence.features.length})</h4>
+          {sequence.features.map((f: any, i: number) => (
+            <div key={i} className="feature-tile" style={{ borderLeftColor: f.color || '#888888' } as React.CSSProperties}>
+              <span className="feature-tile__name">{f.name || f.type || 'unnamed'}</span>
+              <span className="feature-tile__range">{f.start}–{f.end}</span>
+              <span className="feature-tile__type">{f.type}</span>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="form-group">
         <label className="form-label">Sequence</label>
         <textarea className="textarea" value={sequence.sequence} onChange={(e) => onChange({ ...sequence, sequence: e.target.value, length_bp: e.target.value.length })} rows={12} />

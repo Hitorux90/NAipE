@@ -503,6 +503,12 @@ async fn open_sequence(
     let payload = serde_json::json!({"target_path": resolved});
     let result = send_sidecar_request(&sidecar, "open_sequence", payload).await?;
 
+    let features: Vec<serde_json::Value> = result
+        .get("features")
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.clone())
+        .unwrap_or_default();
+
     Ok(Sequence {
         id: result.get("id").and_then(|v| v.as_i64()).unwrap_or_default(),
         name: result.get("name").and_then(|v| v.as_str()).unwrap_or("unnamed").to_string(),
@@ -510,6 +516,7 @@ async fn open_sequence(
         topology: result.get("topology").and_then(|v| v.as_str()).unwrap_or("circular").to_string(),
         length_bp: result.get("length_bp").and_then(|v| v.as_i64()).unwrap_or_default(),
         created_at_ms: 0,
+        features,
     })
 }
 

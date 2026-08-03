@@ -14,6 +14,9 @@ pub struct Sequence {
     pub topology: String,
     pub length_bp: i64,
     pub created_at_ms: i64,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[sqlx(skip)]
+    pub features: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
