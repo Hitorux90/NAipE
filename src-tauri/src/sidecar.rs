@@ -451,7 +451,7 @@ impl SidecarManager {
             .map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, "oneshot dropped"))??;
 
         match pong.result {
-            Some(ref val) if val.get("alive").and_then(|v| v.as_bool()) == Some(true) => Ok(true),
+            Some(ref val) if val.get("pong").and_then(|v| v.as_bool()) == Some(true) => Ok(true),
             _ => Ok(false),
         }
         }
