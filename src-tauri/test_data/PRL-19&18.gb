@@ -1,0 +1,244 @@
+LOCUS       PRL-19                   638 bp ds-DNA     linear       13-NOV-2025
+DEFINITION  .
+KEYWORDS    "Antibiotic resistance" "Backbones" "Cloning sites" "Comment" "DNA
+            fragments" "Design entry" "Genes" "LabCollector ID" "Markers"
+            "Origin of replication" "Parent plasmids" "Promoters" "Protein"
+            "RBS" "Responsible person/group" "Spacers" "Status" "Tags"
+            "Terminators" "Usage" "gRNAs" "marker:USER, USER, BleoR"
+COMMENT     Imported using the Genbank importer.
+            File name: psb054-igf.gb
+            Imported using the Genbank importer. File name: psb054-igf.gb
+            CSN2_pPICZalphaA Imported using the Genbank importer. File name:
+            pasl70-ppicza-csn2.gb Imported using the Genbank importer. File
+            name: 4_CSN2_pPICZalphaA.gb http://www.genscript.com/ This file is
+            created by GenScript ORIGDB|GenBank
+            VNTNAME|U2004HJ130-4,CSN2_pPICZalphaA| VNTAUTHORNAME|GenScript|
+            ApEinfo:methylated:1
+FEATURES             Location/Qualifiers
+     primer          1..37
+                     /label="UnTag_PRL_SP-19_fw"
+                     /note="sequence: cgcgaaCACCTGCTGCGcgccACGCCCGTGTGCCCTA"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     primer          22..35
+                     /label="PRL_FRW"
+                     /note="sequence: ctctcgagaaaagagaggctgaagctACGCCCGTGTGCCC"
+                     /ApEinfo_revcolor="#c7b0e3"
+                     /ApEinfo_fwdcolor="#c7b0e3"
+     primer          22..37
+                     /label="UnTag_PRL_SP-11_fw"
+                     /note="sequence: cgcgaaCACCTGCTGCGggccACGCCCGTGTGCCCTA"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     primer          22..37
+                     /label="UnTag_PRL_SP-1_fw"
+                     /note="sequence: cgcgaaCACCTGCTGCGagcaACGCCCGTGTGCCCTA"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     primer          22..37
+                     /label="UnTag_PRL_SP-4_fw"
+                     /note="sequence: cgcgaaCACCTGCTGCGtgccACGCCCGTGTGCCCTA"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     primer          22..37
+                     /label="UnTag_PRL_SP-17_fw"
+                     /note="sequence: cgcgaaCACCTGCTGCGcgctACGCCCGTGTGCCCTA"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     primer          22..37
+                     /label="UnTag_PRL_SP-18_fw"
+                     /note="sequence: cgcgaaCACCTGCTGCGcgcgACGCCCGTGTGCCCTA"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     primer          22..37
+                     /label="UnTag_PRL_SP-2_fw"
+                     /note="sequence: cgcgaaCACCTGCTGCGgaccACGCCCGTGTGCCCTA"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     primer          22..37
+                     /label="UnTag_PRL_SP-5_fw"
+                     /note="sequence: cgcgaaCACCTGCTGCGggctACGCCCGTGTGCCCTA"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     misc_feature    22..618
+                     /label="PRL"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     CDS             22..618
+                     /label="Translation 22-618"
+                     /translation="TPVCPNGPGNCQVSLRDLFDRAVMVSHYIHDLSSEMFNEFDKRYAQGKGFITMALNSCHTSSLPTPEDKEQAQQTHHEVLMSLILGLLRSWNDPLYHLVTEVRGMKGAPDAILSRAIEIEEENKRLLEGMEMIFGQVIPGAKETEPYPVWSGLPSLQTKDEDARYSAFYNLLHCLRRDSSKIDTYLKLLNCRIIYNNNC"
+     primer          complement(585..638)
+                     /label="Tag_PRL_rv"
+                     /note="sequence: gcgaaCACCTGCCGCAgacaACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#f7977a"
+                     /ApEinfo_fwdcolor="#f7977a"
+     primer          complement(585..618)
+                     /label="Tag_PRL_rv"
+                     /note="sequence: gcgaaCACCTGCCGCAgacaACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#f7977a"
+                     /ApEinfo_fwdcolor="#f7977a"
+     primer          complement(585..618)
+                     /label="PRL_RV"
+                     /note="sequence: CCGCTCACACCAGAAGAACCACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#84b0dc"
+                     /ApEinfo_fwdcolor="#84b0dc"
+     primer          complement(585..618)
+                     /label="Tag_PRL_rv"
+                     /note="sequence: gcgaaCACCTGCCGCAgacaACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#f7977a"
+                     /ApEinfo_fwdcolor="#f7977a"
+     primer          complement(585..618)
+                     /label="Tag_PRL_rv"
+                     /note="sequence: gcgaaCACCTGCCGCAgacaACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#85dae9"
+                     /ApEinfo_fwdcolor="#85dae9"
+     primer          complement(585..618)
+                     /label="Tag_PRL_rv"
+                     /note="sequence: gcgaaCACCTGCCGCAgacaACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#85dae9"
+                     /ApEinfo_fwdcolor="#85dae9"
+     primer          complement(585..618)
+                     /label="Tag_PRL_rv"
+                     /note="sequence: gcgaaCACCTGCCGCAgacaACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#f7977a"
+                     /ApEinfo_fwdcolor="#f7977a"
+     primer          complement(585..618)
+                     /label="Tag_PRL_rv"
+                     /note="sequence: gcgaaCACCTGCCGCAgacaACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#f7977a"
+                     /ApEinfo_fwdcolor="#f7977a"
+     primer          complement(585..618)
+                     /label="Tag_PRL_rv"
+                     /note="sequence: gcgaaCACCTGCCGCAgacaACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#f7977a"
+                     /ApEinfo_fwdcolor="#f7977a"
+ORIGIN
+        1 cgcgaaCACC TGCTGCGcgc cACGCCCGTG TGCCCTAACG GACCCGGCAA CTGTCAGGTC
+       61 TCTCTGCGGG ACCTTTTCGA TAGAGCAGTT ATGGTGTCCC ACTACATTCA CGATCTTTCG
+      121 TCCGAGATGT TTAATGAGTT TGATAAGCGT TACGCTCAAG GCAAGGGCTT TATTACTATG
+      181 GCACTTAATT CTTGCCATAC ATCGTCGCTT CCCACTCCCG AAGACAAGGA GCAAGCTCAA
+      241 CAGACACATC ACGAAGTGCT TATGTCCCTG ATTCTCGGCC TCCTTAGATC CTGGAATGAC
+      301 CCTCTGTACC ATCTTGTTAC AGAGGTCCGA GGAATGAAGG GAGCCCCCGA TGCAATTCTC
+      361 AGCCGTGCAA TTGAAATTGA GGAAGAAAAT AAGCGACTGC TCGAGGGAAT GGAGATGATT
+      421 TTCGGTCAAG TTATCCCTGG CGCTAAGGAA ACAGAGCCTT ACCCCGTTTG GTCGGGACTT
+      481 CCTAGCCTTC AGACCAAAGA TGAAGATGCT CGGTATTCGG CCTTCTATAA CCTTCTCCAC
+      541 TGTCTTAGAC GGGACAGCTC TAAAATCGAC ACCTATCTGA AGCTGCTGAA TTGCCGGATT
+      601 ATTTATAATA ATAACTGTtg tcTGCGGCAG GTGttcgc
+//
+LOCUS       PRL-18                   638 bp ds-DNA     linear       13-NOV-2025
+DEFINITION  .
+KEYWORDS    "Antibiotic resistance" "Backbones" "Cloning sites" "Comment" "DNA
+            fragments" "Design entry" "Genes" "LabCollector ID" "Markers"
+            "Origin of replication" "Parent plasmids" "Promoters" "Protein"
+            "RBS" "Responsible person/group" "Spacers" "Status" "Tags"
+            "Terminators" "Usage" "gRNAs" "marker:USER, USER, BleoR"
+COMMENT     Imported using the Genbank importer.
+            File name: psb054-igf.gb
+            Imported using the Genbank importer. File name: psb054-igf.gb
+            CSN2_pPICZalphaA Imported using the Genbank importer. File name:
+            pasl70-ppicza-csn2.gb Imported using the Genbank importer. File
+            name: 4_CSN2_pPICZalphaA.gb http://www.genscript.com/ This file is
+            created by GenScript ORIGDB|GenBank
+            VNTNAME|U2004HJ130-4,CSN2_pPICZalphaA| VNTAUTHORNAME|GenScript|
+            ApEinfo:methylated:1
+FEATURES             Location/Qualifiers
+     primer          1..37
+                     /label="UnTag_PRL_SP-18_fw"
+                     /note="sequence: cgcgaaCACCTGCTGCGcgcgACGCCCGTGTGCCCTA"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     primer          22..35
+                     /label="PRL_FRW"
+                     /note="sequence: ctctcgagaaaagagaggctgaagctACGCCCGTGTGCCC"
+                     /ApEinfo_revcolor="#c7b0e3"
+                     /ApEinfo_fwdcolor="#c7b0e3"
+     primer          22..37
+                     /label="UnTag_PRL_SP-1_fw"
+                     /note="sequence: cgcgaaCACCTGCTGCGagcaACGCCCGTGTGCCCTA"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     primer          22..37
+                     /label="UnTag_PRL_SP-2_fw"
+                     /note="sequence: cgcgaaCACCTGCTGCGgaccACGCCCGTGTGCCCTA"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     primer          22..37
+                     /label="UnTag_PRL_SP-17_fw"
+                     /note="sequence: cgcgaaCACCTGCTGCGcgctACGCCCGTGTGCCCTA"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     primer          22..37
+                     /label="UnTag_PRL_SP-11_fw"
+                     /note="sequence: cgcgaaCACCTGCTGCGggccACGCCCGTGTGCCCTA"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     primer          22..37
+                     /label="UnTag_PRL_SP-4_fw"
+                     /note="sequence: cgcgaaCACCTGCTGCGtgccACGCCCGTGTGCCCTA"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     primer          22..37
+                     /label="UnTag_PRL_SP-5_fw"
+                     /note="sequence: cgcgaaCACCTGCTGCGggctACGCCCGTGTGCCCTA"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     misc_feature    22..618
+                     /label="PRL"
+                     /ApEinfo_revcolor="#f58a5e"
+                     /ApEinfo_fwdcolor="#f58a5e"
+     CDS             22..618
+                     /label="Translation 22-618"
+                     /translation="TPVCPNGPGNCQVSLRDLFDRAVMVSHYIHDLSSEMFNEFDKRYAQGKGFITMALNSCHTSSLPTPEDKEQAQQTHHEVLMSLILGLLRSWNDPLYHLVTEVRGMKGAPDAILSRAIEIEEENKRLLEGMEMIFGQVIPGAKETEPYPVWSGLPSLQTKDEDARYSAFYNLLHCLRRDSSKIDTYLKLLNCRIIYNNNC"
+     primer          complement(585..638)
+                     /label="Tag_PRL_rv"
+                     /note="sequence: gcgaaCACCTGCCGCAgacaACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#f7977a"
+                     /ApEinfo_fwdcolor="#f7977a"
+     primer          complement(585..618)
+                     /label="PRL_RV"
+                     /note="sequence: CCGCTCACACCAGAAGAACCACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#84b0dc"
+                     /ApEinfo_fwdcolor="#84b0dc"
+     primer          complement(585..618)
+                     /label="Tag_PRL_rv"
+                     /note="sequence: gcgaaCACCTGCCGCAgacaACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#f7977a"
+                     /ApEinfo_fwdcolor="#f7977a"
+     primer          complement(585..618)
+                     /label="Tag_PRL_rv"
+                     /note="sequence: gcgaaCACCTGCCGCAgacaACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#f7977a"
+                     /ApEinfo_fwdcolor="#f7977a"
+     primer          complement(585..618)
+                     /label="Tag_PRL_rv"
+                     /note="sequence: gcgaaCACCTGCCGCAgacaACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#f7977a"
+                     /ApEinfo_fwdcolor="#f7977a"
+     primer          complement(585..618)
+                     /label="Tag_PRL_rv"
+                     /note="sequence: gcgaaCACCTGCCGCAgacaACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#85dae9"
+                     /ApEinfo_fwdcolor="#85dae9"
+     primer          complement(585..618)
+                     /label="Tag_PRL_rv"
+                     /note="sequence: gcgaaCACCTGCCGCAgacaACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#f7977a"
+                     /ApEinfo_fwdcolor="#f7977a"
+     primer          complement(585..618)
+                     /label="Tag_PRL_rv"
+                     /note="sequence: gcgaaCACCTGCCGCAgacaACAGTTATTATTATAAATAATCCGGCAATTCAGC"
+                     /ApEinfo_revcolor="#85dae9"
+                     /ApEinfo_fwdcolor="#85dae9"
+ORIGIN
+        1 cgcgaaCACC TGCTGCGcgc gACGCCCGTG TGCCCTAACG GACCCGGCAA CTGTCAGGTC
+       61 TCTCTGCGGG ACCTTTTCGA TAGAGCAGTT ATGGTGTCCC ACTACATTCA CGATCTTTCG
+      121 TCCGAGATGT TTAATGAGTT TGATAAGCGT TACGCTCAAG GCAAGGGCTT TATTACTATG
+      181 GCACTTAATT CTTGCCATAC ATCGTCGCTT CCCACTCCCG AAGACAAGGA GCAAGCTCAA
+      241 CAGACACATC ACGAAGTGCT TATGTCCCTG ATTCTCGGCC TCCTTAGATC CTGGAATGAC
+      301 CCTCTGTACC ATCTTGTTAC AGAGGTCCGA GGAATGAAGG GAGCCCCCGA TGCAATTCTC
+      361 AGCCGTGCAA TTGAAATTGA GGAAGAAAAT AAGCGACTGC TCGAGGGAAT GGAGATGATT
+      421 TTCGGTCAAG TTATCCCTGG CGCTAAGGAA ACAGAGCCTT ACCCCGTTTG GTCGGGACTT
+      481 CCTAGCCTTC AGACCAAAGA TGAAGATGCT CGGTATTCGG CCTTCTATAA CCTTCTCCAC
+      541 TGTCTTAGAC GGGACAGCTC TAAAATCGAC ACCTATCTGA AGCTGCTGAA TTGCCGGATT
+      601 ATTTATAATA ATAACTGTtg tcTGCGGCAG GTGttcgc
+//

@@ -6,9 +6,10 @@ interface Props {
   tabs: Tab[];
   activeId: string;
   onSelect: (id: string) => void;
+  onClose?: (id: string) => void;
 }
 
-export default function DocumentTabs({ tabs, activeId, onSelect }: Props) {
+export default function DocumentTabs({ tabs, activeId, onSelect, onClose }: Props) {
   return (
     <div className="doc-tabs" role="tablist">
       {tabs.map((tab) => {
@@ -24,7 +25,14 @@ export default function DocumentTabs({ tabs, activeId, onSelect }: Props) {
           >
             {Icon && <Icon size={14} />}
             <span className="doc-tab__label">{tab.label}</span>
-            <span className="doc-tab__close" aria-label="Close">
+            <span
+              className="doc-tab__close"
+              aria-label="Close"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose?.(tab.id);
+              }}
+            >
               <CloseIcon size={12} />
             </span>
           </button>

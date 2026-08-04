@@ -1,14 +1,43 @@
 // src/components/SequenceViewer.tsx
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { getIcon } from '../utils/icons';
-import { Dna, FileText, BookOpen } from 'lucide-react';
+import { Dna, FileText, BookOpen, Circle, AlignLeft } from 'lucide-react';
+import { SequenceState } from '../src/contracts';
+export type Sequence = SequenceState; // convenience re-export
+import CircularViewer from './CircularViewer';
+import LinearViewer from './LinearViewer';
+import ViewTabs from './ViewTabs';
 
-type Sequence = { id: string; name: string; sequence: string; length_bp: number; topology: string; features?: any[] };
+import RestrictionMapper from './RestrictionMapper';
+import PrimerDesigner from './PrimerDesigner';
+import OrfFinder from './OrfFinder';
+import SequenceAligner from './SequenceAligner';
+import VirtualCloning from './VirtualCloning';
+import BiochemicalPlots from './BiochemicalPlots';
+import AutoAnnotator from './AutoAnnotator';
+import MotifSearch from './MotifSearch';
+
+function formatSequence(seq: string): string {
+  const BLOCK = 10;
+  const BLOCKS_PER_LINE = 6;   // 60 bp per line — standard GenBank ORIGIN format
+  const LINE_BP = BLOCK * BLOCKS_PER_LINE;
+  const lines: string[] = [];
+  for (let i = 0; i < seq.length; i += LINE_BP) {
+    const lineNum = String(i + 1).padStart(9, ' ');
+    const chunk = seq.slice(i, i + LINE_BP);
+    const blocks: string[] = [];
+    for (let j = 0; j < chunk.length; j += BLOCK) {
+      blocks.push(chunk.slice(j, j + BLOCK).toLowerCase());
+    }
+    lines.push(`${lineNum} ${blocks.join(' ')}`);
+  }
+  return lines.join('\n');
+}
+
 interface Props {
-  sequence: Sequence | null;
-  onChange: (updated: Sequence) => void;
-  onCreateSequence?: (created: Sequence) => void;
+  sequence: SequenceState | null;
+  onChange: (updated: SequenceState) => void;
+  onCreateSequence?: (created: any) => void;
 }
 
 function statusVariant(status: string): string {
@@ -22,8 +51,7 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
   const [sequenceText, setSequenceText] = useState('');
   const [topology, setTopology] = useState<string>('circular');
   const [status, setStatus] = useState<string | null>(null);
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
+  const [viewMode, setViewMode] = useState<'text' | 'circular' | 'linear' | 'restriction' | 'primer' | 'orf' | 'align' | 'clone' | 'plots' | 'auto_annotate' | 'motif'>('text');
 
   useEffect(() => {
     if (!sequence) return;
@@ -104,7 +132,6 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
     const current = sequence;
     if (!current) return;
     try {
-      /* TODO: use Tauri dialog.save() API — needs @tauri-apps/plugin-dialog */
       const fallback = `${encodeURIComponent(current.name)}.dna`;
       const out = await invoke<string>('save_dna', {
         sequenceId: Number(current.id),
@@ -121,7 +148,6 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
     const current = sequence;
     if (!current) return;
     try {
-      /* TODO: use Tauri dialog.save() API — needs @tauri-apps/plugin-dialog */
       const fallback = `${encodeURIComponent(current.name)}.fasta`;
       const out = await invoke<string>('save_as_fasta', {
         sequenceId: Number(current.id),
@@ -138,7 +164,6 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
     const current = sequence;
     if (!current) return;
     try {
-      /* TODO: use Tauri dialog.save() API — needs @tauri-apps/plugin-dialog */
       const fallback = `${encodeURIComponent(current.name)}.gb`;
       const out = await invoke<string>('save_as_gb', {
         sequenceId: Number(current.id),
@@ -180,7 +205,27 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
 
   return (
     <div className="canvas__content">
-      <h3 className="canvas__title">Sequence Viewer</h3>
+      <div className="canvas__header">
+        <h3 className="canvas__title">Sequence Viewer</h3>
+        <ViewTabs
+          tabs={[
+            { id: 'text', label: 'Sequence' },
+            { id: 'circular', label: 'Circular Map' },
+            { id: 'linear', label: 'Linear Map' },
+            { id: 'restriction', label: 'Restriction Map' },
+            { id: 'primer', label: 'Primer / PCR' },
+            { id: 'orf', label: 'ORF Finder' },
+            { id: 'align', label: 'Sequence Aligner' },
+            { id: 'clone', label: 'Virtual Cloning' },
+            { id: 'plots', label: 'Biochemical Plots' },
+            { id: 'auto_annotate', label: 'Auto-Annotation' },
+            { id: 'motif', label: 'Motif Search' },
+          ]}
+          active={viewMode}
+          onChange={(id) => setViewMode(id as any)}
+        />
+      </div>
+
       <div className="form-group">
         <label className="form-label">Name</label>
         <input className="input" value={sequence.name} onChange={(e) => onChange({ ...sequence, name: e.target.value })} />
@@ -188,22 +233,51 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
       <p className="canvas__meta">
         Length: {sequence.length_bp} bp | Topology: {sequence.topology}
       </p>
-      {sequence.features && sequence.features.length > 0 && (
-        <div className="feature-list">
-          <h4 className="feature-list__title">Features ({sequence.features.length})</h4>
-          {sequence.features.map((f: any, i: number) => (
-            <div key={i} className="feature-tile" style={{ borderLeftColor: f.color || '#888888' } as React.CSSProperties}>
-              <span className="feature-tile__name">{f.name || f.type || 'unnamed'}</span>
-              <span className="feature-tile__range">{f.start}–{f.end}</span>
-              <span className="feature-tile__type">{f.type}</span>
+
+      {/* Render View based on active mode */}
+      {viewMode === 'circular' && <CircularViewer sequence={sequence} />}
+      {viewMode === 'linear' && <LinearViewer sequence={sequence} />}
+      {viewMode === 'restriction' && <RestrictionMapper sequence={sequence} />}
+      {viewMode === 'primer' && <PrimerDesigner sequence={sequence} />}
+      {viewMode === 'orf' && <OrfFinder sequence={sequence} />}
+      {viewMode === 'align' && <SequenceAligner sequence={sequence} />}
+      {viewMode === 'clone' && <VirtualCloning sequence={sequence} />}
+      {viewMode === 'plots' && <BiochemicalPlots sequence={sequence} />}
+      {viewMode === 'auto_annotate' && <AutoAnnotator sequence={sequence} onChange={onChange} />}
+      {viewMode === 'motif' && <MotifSearch sequence={sequence} onChange={onChange} />}
+
+      {viewMode === 'text' && (
+        <>
+          {sequence.annotations && sequence.annotations.length > 0 && (
+            <div className="feature-list">
+              <h4 className="feature-list__title">Features ({sequence.annotations.length})</h4>
+              {sequence.annotations.map((f) => {
+                const tileStyle = { borderLeftColor: f.color || '#888888' };
+                return (
+                  <div key={f.id} className="feature-tile" style={tileStyle}>
+                    <span className="feature-tile__name">{f.name || f.type || 'unnamed'}</span>
+                    <span className="feature-tile__range">
+                      {f.strand === '-' ? '\u2190 ' : '\u2192 '}
+                      {f.start}–{f.end}
+                    </span>
+                    <span className="feature-tile__type">{f.type}</span>
+                    {f.notes && (
+                      <span title={f.notes} className="feature-tile__notes">
+                        {f.notes.length > 40 ? f.notes.slice(0, 40) + '\u2026' : f.notes}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
+          )}
+          <div className="form-group">
+            <label className="form-label">Sequence</label>
+            <textarea className="textarea" readOnly value={formatSequence(sequence.sequence)} rows={20} />
+          </div>
+        </>
       )}
-      <div className="form-group">
-        <label className="form-label">Sequence</label>
-        <textarea className="textarea" value={sequence.sequence} onChange={(e) => onChange({ ...sequence, sequence: e.target.value, length_bp: e.target.value.length })} rows={12} />
-      </div>
+
       <hr className="separator" />
       <div className="button-group">
         <button id="save-dna-btn" className="button button--secondary" onClick={saveDna}><Dna size={16} /> Save as .dna</button>

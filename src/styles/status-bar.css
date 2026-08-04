@@ -6,7 +6,7 @@
 .layout__status-bar {
   grid-column: 1 / -1;
   grid-area: status-bar;
-  height: var(--layout-status-bar-height, 24px);
+  height: var(--status-bar-h, 32px);
   background: var(--color-bg-status, #F9FAFB);
   border-top: 1px solid var(--color-border-subtle, #E5E7EB);
   display: flex;

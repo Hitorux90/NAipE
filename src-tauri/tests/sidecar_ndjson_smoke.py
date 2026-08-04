@@ -769,16 +769,24 @@ def test_open_gb_returns_features(sidecar_proc):
     assert payload["topology"] == "circular"
     assert payload["length_bp"] == 4801
     features = payload.get("features", [])
-    assert len(features) > 0, "GenBank features must not be empty"
+    assert len(features) == 29, f"Expected 29 features, got {len(features)}"
     f0 = features[0]
     assert f0["type"] == "primer"
     assert f0["start"] == 1
     assert f0["end"] == 25
     assert f0["strand"] == 1
     assert f0["name"] == "pMG36E_speB_fw"
+    assert "sequence:" in f0["note"], f"Expected note with primer sequence, got: {f0['note']!r}"
     comp = next((f for f in features if f.get("name") == "Factor Xa site"), None)
     assert comp is not None
     assert comp["strand"] == -1
+    assert comp.get("translation") == "IEGR", \
+        f"Expected translation='IEGR', got: {comp.get('translation')!r}"
     ori = next((f for f in features if f.get("name") == "ori"), None)
     assert ori is not None
     assert ori["color"] == "#ffef86"
+    # Unlabeled CDS must fall back to type name and preserve translation
+    cds = next((f for f in features if f.get("start") == 3478 and f.get("end") == 4692), None)
+    assert cds is not None, "CDS at 3478..4692 must be present"
+    assert cds["name"] == "CDS", f"Unlabeled CDS should fall back to 'CDS', got: {cds['name']!r}"
+    assert len(cds.get("translation", "")) > 100, "CDS translation must be preserved and > 100 aa"

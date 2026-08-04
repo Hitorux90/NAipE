@@ -187,6 +187,8 @@
   padding: var(--space-10, 10px) var(--space-12, 12px);
   border-top: 1px solid var(--color-border-subtle, #E5E7EB);
   background: var(--color-bg-sidebar, #F9FAFB);
+  flex-shrink: 0;
+  min-height: 60px;
 }
 
 .file-explorer__hint {
@@ -235,11 +237,17 @@
   overflow: auto;
 }
 
+.canvas__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .canvas__title {
   font-size: var(--font-size-base, 13px);
   font-weight: var(--font-weight-section-header, 600);
   color: var(--color-text-primary, #111827);
-  margin: 0 0 var(--space-12, 12px) 0;
+  margin: 0;
 }
 
 .canvas__meta {
@@ -668,4 +676,76 @@
   font-style: italic;
   white-space: nowrap;
   margin-left: auto;
+}
+
+.feature-tile__notes {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-text-secondary, #6B7280);
+  font-family: var(--font-family-sequence, "Fira Code", "Courier New", monospace);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 160px;
+}
+
+/* ============================================================
+   Canvas Sequence Viewers — CircularViewer & LinearViewer
+   ============================================================ */
+
+/* Container that fills the parent flex column */
+.viewer-canvas-wrap {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  min-height: 420px;
+  overflow: hidden;
+  background: var(--color-bg-canvas, #FFFFFF);
+  border-radius: 6px;
+  border: 1px solid var(--color-border-subtle, #E5E7EB);
+}
+
+/* The <canvas> element stretches to fill the wrapper */
+.viewer-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+/* Grabbing state set by JS directly on the element (style.cursor = 'grabbing') */
+
+/* Zoom / pan control overlay — bottom-right corner */
+.viewer-controls {
+  position: absolute;
+  bottom: var(--space-12, 12px);
+  right: var(--space-12, 12px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 4px);
+  z-index: var(--z-palette, 200);
+}
+
+.viewer-controls__btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: var(--font-size-lg, 16px);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-canvas, #FFFFFF);
+  border: 1px solid var(--color-border-subtle, #E5E7EB);
+  color: var(--color-text-primary, #111827);
+  cursor: pointer;
+  transition: background var(--transition-fast, 100ms);
+}
+
+.viewer-controls__btn:hover {
+  background: var(--color-hover-bg, #E5E7EB);
+}
+
+.viewer-controls__btn:focus-visible {
+  outline: var(--outline-focus-width, 2px) solid var(--outline-focus-color, #2563EB);
+  outline-offset: var(--outline-focus-offset, 2px);
 }

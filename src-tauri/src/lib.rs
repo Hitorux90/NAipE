@@ -242,9 +242,14 @@ pub fn run() {
                     std::path::Path::new("-m"),
                     std::path::Path::new("sidecar"),
                 ];
+                let cwd = match app.path().resource_dir() {
+                    Ok(p) if p.join("sidecar").exists() => p,
+                    _ => PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+                };
                 let sidecar_result = SidecarManager::new(
                     &python_candidate,
                     &sidecar_args,
+                    &cwd,
                     SidecarConfig::default(),
                 )
                 .await;
@@ -272,7 +277,7 @@ pub fn run() {
                 Ok(())
             })
         })
-        .invoke_handler(tauri::generate_handler![greet, get_parts, create_sequence, new_sequence, list_sequences, save_dna, save_fasta, open_file, save_as_dna, save_as_fasta, save_as_gb, open_sequence, create_construct, add_part_to_construct, save_construct, list_constructs, open_construct, create_annotation, list_annotations, undo, redo])
+        .invoke_handler(tauri::generate_handler![greet, get_parts, create_sequence, new_sequence, list_sequences, save_dna, save_fasta, open_file, save_as_dna, save_as_fasta, save_as_gb, open_sequence, create_construct, add_part_to_construct, save_construct, list_constructs, open_construct, create_annotation, list_annotations, undo, redo, digest_sequence, analyze_primer, simulate_pcr, find_orfs, align_sequences, simulate_assembly, compute_properties, auto_annotate, search_motif])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -877,4 +882,210 @@ async fn redo(
         context: None,
     })?;
     Ok(manager.redo(sequence_id))
+}
+
+#[tauri::command]
+async fn digest_sequence(
+    sidecar: tauri::State<'_, Arc<SidecarManager>>,
+    sequence: String,
+    topology: String,
+    enzymes: Vec<String>,
+) -> Result<serde_json::Value, SidecarError> {
+    let req = sidecar::SidecarRequest::new(uuid::Uuid::new_v4(), "digest")
+        .with_payload(serde_json::json!({
+            "sequence": sequence,
+            "topology": topology,
+            "enzymes": enzymes,
+        }));
+    let resp = sidecar.send_request(req).await.map_err(|e| SidecarError {
+        error_code: "SIDECAR_ERROR".into(),
+        layer: "tauri".into(),
+        message_dev: e.to_string(),
+        message_user: "Restriction digest failed".into(),
+        recoverable: true,
+        context: None,
+    })?;
+    Ok(resp.result.unwrap_or_default())
+}
+
+#[tauri::command]
+async fn analyze_primer(
+    sidecar: tauri::State<'_, Arc<SidecarManager>>,
+    primer: String,
+) -> Result<serde_json::Value, SidecarError> {
+    let req = sidecar::SidecarRequest::new(uuid::Uuid::new_v4(), "analyze_primer")
+        .with_payload(serde_json::json!({ "primer": primer }));
+    let resp = sidecar.send_request(req).await.map_err(|e| SidecarError {
+        error_code: "SIDECAR_ERROR".into(),
+        layer: "tauri".into(),
+        message_dev: e.to_string(),
+        message_user: "Primer analysis failed".into(),
+        recoverable: true,
+        context: None,
+    })?;
+    Ok(resp.result.unwrap_or_default())
+}
+
+#[tauri::command]
+async fn simulate_pcr(
+    sidecar: tauri::State<'_, Arc<SidecarManager>>,
+    template: String,
+    forward_primer: String,
+    reverse_primer: String,
+) -> Result<serde_json::Value, SidecarError> {
+    let req = sidecar::SidecarRequest::new(uuid::Uuid::new_v4(), "simulate_pcr")
+        .with_payload(serde_json::json!({
+            "template": template,
+            "forward_primer": forward_primer,
+            "reverse_primer": reverse_primer,
+        }));
+    let resp = sidecar.send_request(req).await.map_err(|e| SidecarError {
+        error_code: "SIDECAR_ERROR".into(),
+        layer: "tauri".into(),
+        message_dev: e.to_string(),
+        message_user: "PCR simulation failed".into(),
+        recoverable: true,
+        context: None,
+    })?;
+    Ok(resp.result.unwrap_or_default())
+}
+
+#[tauri::command]
+async fn find_orfs(
+    sidecar: tauri::State<'_, Arc<SidecarManager>>,
+    sequence: String,
+    topology: String,
+    min_length_aa: Option<i64>,
+) -> Result<serde_json::Value, SidecarError> {
+    let req = sidecar::SidecarRequest::new(uuid::Uuid::new_v4(), "find_orfs")
+        .with_payload(serde_json::json!({
+            "sequence": sequence,
+            "topology": topology,
+            "min_length_aa": min_length_aa.unwrap_or(30),
+        }));
+    let resp = sidecar.send_request(req).await.map_err(|e| SidecarError {
+        error_code: "SIDECAR_ERROR".into(),
+        layer: "tauri".into(),
+        message_dev: e.to_string(),
+        message_user: "ORF finding failed".into(),
+        recoverable: true,
+        context: None,
+    })?;
+    Ok(resp.result.unwrap_or_default())
+}
+
+#[tauri::command]
+async fn align_sequences(
+    sidecar: tauri::State<'_, Arc<SidecarManager>>,
+    query: String,
+    target: String,
+    mode: Option<String>,
+) -> Result<serde_json::Value, SidecarError> {
+    let req = sidecar::SidecarRequest::new(uuid::Uuid::new_v4(), "align_sequences")
+        .with_payload(serde_json::json!({
+            "query": query,
+            "target": target,
+            "mode": mode.unwrap_or_else(|| "global".to_string()),
+        }));
+    let resp = sidecar.send_request(req).await.map_err(|e| SidecarError {
+        error_code: "SIDECAR_ERROR".into(),
+        layer: "tauri".into(),
+        message_dev: e.to_string(),
+        message_user: "Sequence alignment failed".into(),
+        recoverable: true,
+        context: None,
+    })?;
+    Ok(resp.result.unwrap_or_default())
+}
+
+#[tauri::command]
+async fn simulate_assembly(
+    sidecar: tauri::State<'_, Arc<SidecarManager>>,
+    parts: Vec<serde_json::Value>,
+    method: Option<String>,
+) -> Result<serde_json::Value, SidecarError> {
+    let req = sidecar::SidecarRequest::new(uuid::Uuid::new_v4(), "simulate_assembly")
+        .with_payload(serde_json::json!({
+            "parts": parts,
+            "method": method.unwrap_or_else(|| "gibson".to_string()),
+        }));
+    let resp = sidecar.send_request(req).await.map_err(|e| SidecarError {
+        error_code: "SIDECAR_ERROR".into(),
+        layer: "tauri".into(),
+        message_dev: e.to_string(),
+        message_user: "Virtual assembly failed".into(),
+        recoverable: true,
+        context: None,
+    })?;
+    Ok(resp.result.unwrap_or_default())
+}
+
+#[tauri::command]
+async fn compute_properties(
+    sidecar: tauri::State<'_, Arc<SidecarManager>>,
+    sequence: String,
+    window_size: Option<i64>,
+    step: Option<i64>,
+) -> Result<serde_json::Value, SidecarError> {
+    let req = sidecar::SidecarRequest::new(uuid::Uuid::new_v4(), "compute_properties")
+        .with_payload(serde_json::json!({
+            "sequence": sequence,
+            "window_size": window_size.unwrap_or(50),
+            "step": step.unwrap_or(10),
+        }));
+    let resp = sidecar.send_request(req).await.map_err(|e| SidecarError {
+        error_code: "SIDECAR_ERROR".into(),
+        layer: "tauri".into(),
+        message_dev: e.to_string(),
+        message_user: "Biochemical property calculation failed".into(),
+        recoverable: true,
+        context: None,
+    })?;
+    Ok(resp.result.unwrap_or_default())
+}
+
+#[tauri::command]
+async fn auto_annotate(
+    sidecar: tauri::State<'_, Arc<SidecarManager>>,
+    sequence: String,
+    min_identity: Option<f64>,
+) -> Result<serde_json::Value, SidecarError> {
+    let req = sidecar::SidecarRequest::new(uuid::Uuid::new_v4(), "auto_annotate")
+        .with_payload(serde_json::json!({
+            "sequence": sequence,
+            "min_identity": min_identity.unwrap_or(90.0),
+        }));
+    let resp = sidecar.send_request(req).await.map_err(|e| SidecarError {
+        error_code: "SIDECAR_ERROR".into(),
+        layer: "tauri".into(),
+        message_dev: e.to_string(),
+        message_user: "Auto-annotation failed".into(),
+        recoverable: true,
+        context: None,
+    })?;
+    Ok(resp.result.unwrap_or_default())
+}
+
+#[tauri::command]
+async fn search_motif(
+    sidecar: tauri::State<'_, Arc<SidecarManager>>,
+    sequence: String,
+    pattern: String,
+    is_regex: Option<bool>,
+) -> Result<serde_json::Value, SidecarError> {
+    let req = sidecar::SidecarRequest::new(uuid::Uuid::new_v4(), "search_motif")
+        .with_payload(serde_json::json!({
+            "sequence": sequence,
+            "pattern": pattern,
+            "is_regex": is_regex.unwrap_or(false),
+        }));
+    let resp = sidecar.send_request(req).await.map_err(|e| SidecarError {
+        error_code: "SIDECAR_ERROR".into(),
+        layer: "tauri".into(),
+        message_dev: e.to_string(),
+        message_user: "Motif search failed".into(),
+        recoverable: true,
+        context: None,
+    })?;
+    Ok(resp.result.unwrap_or_default())
 }

@@ -1,0 +1,21 @@
+LOCUS       Bif_SP-4                 119 bp ds-DNA     linear       10-FEB-2026
+DEFINITION  .
+FEATURES             Location/Qualifiers
+     primer          1..35
+                     /label="Bif_SP-4_fw"
+                     /note="sequence: AGTCCATCATGAAGATAAACAATAAGGGCAAGGGC"
+                     /ApEinfo_revcolor="#c6c9d1"
+                     /ApEinfo_fwdcolor="#c6c9d1"
+     misc_feature    9..107
+                     /label="Bif_SP-4"
+                     /ApEinfo_revcolor="#84b0dc"
+                     /ApEinfo_fwdcolor="#84b0dc"
+     primer          complement(91..119)
+                     /label="Bif_SP-4_rv"
+                     /note="sequence: aaagttttgatcCGCACTGGCACTTGCAG"
+                     /ApEinfo_revcolor="#d59687"
+                     /ApEinfo_fwdcolor="#d59687"
+ORIGIN
+        1 AGTCCATCAT GAAGATAAAC AATAAGGGCA AGGGCGCTCT TATCGCGGCA ATTACCGCCG
+       61 CGGCAACGCT ATTGTCATGC GGGCTGGCCG CTGCAAGTGC CAGTGCGgat caaaacttt
+//

@@ -87,3 +87,36 @@
   --z-modal: 300;
   --z-tooltip: 400;
 }
+
+:root.dark {
+  /* Colors - Dark Theme */
+  --color-bg-canvas: #0F172A; /* Slate 900 */
+  --color-bg-sidebar: #1E293B; /* Slate 800 */
+  --color-bg-rail: #0F172A; /* Match canvas or darker */
+  --color-bg-status: #1E293B;
+  --color-border-subtle: #334155; /* Slate 700 */
+  
+  --color-primary-accent: #3B82F6; /* Blue 500 */
+  --color-text-primary: #F8FAFC; /* Slate 50 */
+  --color-text-secondary: #94A3B8; /* Slate 400 */
+  
+  --color-danger: #EF4444;
+  --color-danger-bg: #451A1A;
+  --color-success: #22C55E;
+  --color-success-bg: #143F24;
+  
+  /* Annotations typically need bright colors in dark mode */
+  --color-annotation-default: #F87171;
+  --color-part-default: #A1A1AA;
+
+  /* State - Dark Theme */
+  --color-hover-bg: #334155;
+  --color-active-bg: #475569;
+  --color-focus-ring: #60A5FA;
+  --color-disabled: #475569;
+  
+  --button-primary-hover: #2563EB;
+  --button-primary-active: #1D4ED8;
+  --button-danger-hover: #7F1D1D;
+  --file-item-hover-active: #475569;
+}

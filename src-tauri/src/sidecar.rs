@@ -334,6 +334,8 @@ pub struct SidecarManager {
     python_executable: PathBuf,
     /// Saved for respawn on restart().
     args: Vec<PathBuf>,
+    /// Saved for respawn on restart().
+    cwd: PathBuf,
 }
 
 impl SidecarManager {
@@ -344,12 +346,14 @@ impl SidecarManager {
     pub async fn new(
         python_executable: impl AsRef<std::path::Path>,
         args: &[impl AsRef<std::path::Path>],
+        cwd: impl AsRef<std::path::Path>,
         config: SidecarConfig,
     ) -> io::Result<Self> {
         let python_path = python_executable.as_ref().to_path_buf();
+        let cwd_path = cwd.as_ref().to_path_buf();
         tracing::info!(
             python=%python_path.display(),
-            cwd=%std::path::Path::new(env!("CARGO_MANIFEST_DIR")).display(),
+            cwd=%cwd_path.display(),
             "spawning sidecar"
         );
         let mut child = Command::new(&python_path)
@@ -361,9 +365,9 @@ impl SidecarManager {
         // Use unbuffered lines in Python (`-u`) so newlines reach the
         // parent immediately and per-line framing stays consistent.
         .arg("-u")
-        // `CARGO_MANIFEST_DIR` always resolves to the crate root (src-tauri/),
-        // regardless of where cargo runs the binary from.
-        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        // Use the explicit CWD provided by the caller to ensure it works
+        // both in dev and production.
+        .current_dir(&cwd_path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -388,6 +392,7 @@ impl SidecarManager {
         temp_files: Mutex::new(Vec::new()),
         python_executable: python_exec,
         args: sidecar_args,
+        cwd: cwd_path,
         };
 
         if let Some(stdout) = stdout {
@@ -761,6 +766,7 @@ impl SidecarManager {
         let mut new_child = Command::new(&self.python_executable)
         .args(&self.args)
         .arg("-u")
+        .current_dir(&self.cwd)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
