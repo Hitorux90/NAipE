@@ -37,7 +37,7 @@ export default function FileExplorer({ sequences, selectedId, onSelect, onOpenSe
         ))}
       </ul>
       <div className="file-explorer__actions">
-        <button className="button button--primary" onClick={onOpenSelected} id="open-file-btn">
+        <button className="button button--primary" style={{ width: '100%' }} onClick={onOpenSelected} id="open-file-btn">
           Open file...
         </button>
         <p className="file-explorer__hint">Supported: .dna, .fasta, .gb</p>

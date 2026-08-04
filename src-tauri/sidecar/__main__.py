@@ -551,6 +551,182 @@ def _handle_command(cmd, msg_id, payload):
         except Exception as exc:
             return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
 
+    if cmd == "digest":
+        sequence = payload.get("sequence") or ""
+        topology = payload.get("topology") or "circular"
+        enzymes = payload.get("enzymes") or []
+        try:
+            try:
+                from .restriction import find_cuts
+            except ImportError:
+                from restriction import find_cuts
+            cuts = find_cuts(sequence, topology, enzymes)
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "digest",
+                "payload": {"cuts": cuts},
+                "ok": True,
+            }
+        except Exception as exc:
+            return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
+
+    if cmd == "analyze_primer":
+        primer = payload.get("primer") or ""
+        try:
+            try:
+                from .primer import analyze_primer as calc_primer
+            except ImportError:
+                from primer import analyze_primer as calc_primer
+            result = calc_primer(primer)
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "analyze_primer",
+                "payload": result,
+                "ok": True,
+            }
+        except Exception as exc:
+            return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
+
+    if cmd == "simulate_pcr":
+        template = payload.get("template") or ""
+        fwd = payload.get("forward_primer") or ""
+        rev = payload.get("reverse_primer") or ""
+        try:
+            try:
+                from .primer import simulate_pcr as run_pcr
+            except ImportError:
+                from primer import simulate_pcr as run_pcr
+            result = run_pcr(template, fwd, rev)
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "simulate_pcr",
+                "payload": result,
+                "ok": result.get("ok", True),
+            }
+        except Exception as exc:
+            return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
+
+    if cmd == "find_orfs":
+        sequence = payload.get("sequence") or ""
+        topology = payload.get("topology") or "linear"
+        min_length_aa = payload.get("min_length_aa") or 30
+        try:
+            try:
+                from .orf import find_orfs as scan_orfs
+            except ImportError:
+                from orf import find_orfs as scan_orfs
+            result = scan_orfs(sequence, topology, min_length_aa)
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "find_orfs",
+                "payload": result,
+                "ok": True,
+            }
+        except Exception as exc:
+            return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
+
+    if cmd == "align_sequences":
+        query = payload.get("query") or ""
+        target = payload.get("target") or ""
+        mode = payload.get("mode") or "global"
+        try:
+            try:
+                from .align import align_sequences as run_align
+            except ImportError:
+                from align import align_sequences as run_align
+            result = run_align(query, target, mode)
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "align_sequences",
+                "payload": result,
+                "ok": True,
+            }
+        except Exception as exc:
+            return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
+
+    if cmd == "simulate_assembly":
+        parts = payload.get("parts") or []
+        method = payload.get("method") or "gibson"
+        try:
+            try:
+                from .assembly import simulate_assembly as run_asm
+            except ImportError:
+                from assembly import simulate_assembly as run_asm
+            result = run_asm(parts, method)
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "simulate_assembly",
+                "payload": result,
+                "ok": result.get("ok", True),
+            }
+        except Exception as exc:
+            return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
+
+    if cmd == "compute_properties":
+        sequence = payload.get("sequence") or ""
+        window_size = payload.get("window_size") or 50
+        step = payload.get("step") or 10
+        try:
+            try:
+                from .properties import compute_properties as calc_props
+            except ImportError:
+                from properties import compute_properties as calc_props
+            result = calc_props(sequence, window_size, step)
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "compute_properties",
+                "payload": result,
+                "ok": True,
+            }
+        except Exception as exc:
+            return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
+
+    if cmd == "auto_annotate":
+        sequence = payload.get("sequence") or ""
+        min_identity = payload.get("min_identity") or 90.0
+        try:
+            try:
+                from .auto_annotate import auto_annotate as run_aa
+            except ImportError:
+                from auto_annotate import auto_annotate as run_aa
+            result = run_aa(sequence, min_identity)
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "auto_annotate",
+                "payload": result,
+                "ok": True,
+            }
+        except Exception as exc:
+            return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
+
+    if cmd == "search_motif":
+        sequence = payload.get("sequence") or ""
+        pattern = payload.get("pattern") or ""
+        is_regex = payload.get("is_regex") or False
+        try:
+            try:
+                from .motif import search_motif as run_motif
+            except ImportError:
+                from motif import search_motif as run_motif
+            result = run_motif(sequence, pattern, is_regex)
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "search_motif",
+                "payload": result,
+                "ok": result.get("ok", True),
+            }
+        except Exception as exc:
+            return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
+
     if cmd == "undo":
         return _error(msg_id, cmd, "UNKNOWN_COMMAND", "undo requires Rust-owned stack; not exposed via sidecar yet")
 

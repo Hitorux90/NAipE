@@ -73,8 +73,13 @@ def _topology(text: str) -> str:
 
 def _parse_features(text: str):
     features = []
+    _current_qual_key = None  # tracks last qualifier key for continuation lines
     for raw_line in text.splitlines():
         stripped = raw_line.strip()
+
+        # Stop at ORIGIN section — DNA lines are not features
+        if stripped == "ORIGIN":
+            break
 
         if raw_line.startswith("     ") and len(raw_line) > 5 and raw_line[5] != " ":
             parts = stripped.split()
@@ -104,11 +109,13 @@ def _parse_features(text: str):
                 "start": start,
                 "end": end,
                 "strand": strand,
-                "name": "",
+                "name": type_,  # fallback: feature type when /label absent
                 "note": "",
+                "translation": "",
                 "color": "#888888",
             }
             features.append(current)
+            _current_qual_key = None
             continue
 
         if raw_line.startswith("                     ") and stripped.startswith("/"):
@@ -119,15 +126,38 @@ def _parse_features(text: str):
                 key, val = qual.split("=", 1)
                 val = val.strip('"')
                 key = key.strip()
+                _current_qual_key = key
                 if key == "label":
                     features[-1]["name"] = val
                 elif key == "note":
                     features[-1]["note"] = val
+                elif key == "translation":
+                    features[-1]["translation"] = val
                 elif key == "ApEinfo_fwdcolor":
                     features[-1]["color"] = val
             else:
                 # qualifier without value (e.g. /pseudo)
+                _current_qual_key = None
                 pass
+            continue
+
+        # Multi-line continuation of a qualifier value
+        # These lines have 21 leading spaces but no "/" prefix.
+        if (
+            raw_line.startswith("                     ")
+            and not stripped.startswith("/")
+            and features
+            and _current_qual_key is not None
+            and stripped
+        ):
+            appended = stripped.strip('"')
+            key = _current_qual_key
+            if key == "note":
+                features[-1]["note"] = features[-1]["note"] + appended
+            elif key == "translation":
+                features[-1]["translation"] = features[-1]["translation"] + appended
+            elif key == "label":
+                features[-1]["name"] = features[-1]["name"] + appended
             continue
 
     return features

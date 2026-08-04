@@ -8,37 +8,26 @@ import NavRail from '../components/NavRail';
 import StatusBar from '../components/StatusBar';
 import SplitPane from '../components/SplitPane';
 import EmptyState from '../components/EmptyState';
-
-type FeatureData = {
-  type: string;
-  start: number;
-  end: number;
-  strand: number;
-  name: string;
-  note: string;
-  color: string;
-};
-
-type Sequence = { id: string; name: string; sequence: string; length_bp: number; topology: string; features?: FeatureData[] };
+import { useSequenceStore } from '../store/useSequenceStore';
 
 export default function App() {
-  const [sequences, setSequences] = useState<Sequence[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [parts, setParts] = useState<{ id: string; name: string }[]>([]);
-  const [activeSequence, setActiveSequence] = useState<Sequence | null>(null);
+  const {
+    sequences,
+    activeId,
+    setActiveId,
+    addSequence,
+    updateActiveSequence,
+    closeTab,
+    getActiveSequence,
+  } = useSequenceStore();
+
+  const activeSequence = getActiveSequence();
+  const [parts] = useState<{ id: string; name: string }[]>([]);
   const [navSection, setNavSection] = useState<'sequences' | 'constructs'>('sequences');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectSequence = (id: string) => {
     setActiveId(id);
-    const found = sequences.find((s) => s.id === id) || null;
-    setActiveSequence(found);
-  };
-
-  const handleCreateSequence = (created: Sequence) => {
-    setSequences((prev) => [...prev, created]);
-    setActiveId(created.id);
-    setActiveSequence(created);
   };
 
   const handleOpenSelected = () => {
@@ -49,24 +38,10 @@ export default function App() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const result = await invoke<{ id: number; name: string; sequence: string; length_bp: number; topology: string; features?: FeatureData[] }>('open_sequence', {
+      const result = await invoke<any>('open_sequence', {
         targetPath: (file as any).path || file.name,
       });
-      const opened: Sequence = {
-        id: String(result.id),
-        name: result.name,
-        sequence: result.sequence,
-        length_bp: result.length_bp,
-        topology: result.topology,
-        features: result.features ?? [],
-      };
-      setSequences((prev) => {
-        const exists = prev.find((s) => s.id === opened.id);
-        if (!exists) return [...prev, opened];
-        return prev.map((s) => (s.id === opened.id ? opened : s));
-      });
-      setActiveId(opened.id);
-      setActiveSequence(opened);
+      addSequence(result);
     } catch (err: any) {
       const detail = err?.message_user ?? err?.message_dev ?? err?.message ?? JSON.stringify(err);
       window.alert(`Open failed: ${detail}`);
@@ -104,7 +79,7 @@ export default function App() {
             <aside className="layout__sidebar--left">
               {navSection === 'sequences' ? (
                 <FileExplorer
-                  sequences={sequences}
+                  sequences={sequences as any}
                   selectedId={activeId}
                   onSelect={selectSequence}
                   onOpenSelected={handleOpenSelected}
@@ -125,9 +100,18 @@ export default function App() {
               left={
                 <main className="layout__canvas">
                   {sequences.length > 0 && (
-                    <DocumentTabs tabs={sequences.map((s) => ({ id: s.id, label: s.name }))} activeId={activeId ?? ''} onSelect={selectSequence} />
+                    <DocumentTabs
+                      tabs={sequences.map((s) => ({ id: s.id, label: s.name }))}
+                      activeId={activeId ?? ''}
+                      onSelect={selectSequence}
+                      onClose={closeTab}
+                    />
                   )}
-                  <SequenceViewer sequence={activeSequence} onChange={setActiveSequence} onCreateSequence={handleCreateSequence} />
+                  <SequenceViewer
+                    sequence={activeSequence}
+                    onChange={(updated) => updateActiveSequence(updated)}
+                    onCreateSequence={(created) => addSequence(created)}
+                  />
                 </main>
               }
               right={
