@@ -14,7 +14,7 @@ const sampleSequence: Sequence = {
 describe('SequenceViewer', () => {
   it('renders viewer header when sequence is active', () => {
     render(<SequenceViewer sequence={sampleSequence} onChange={() => {}} />);
-    expect(screen.getByText('Sequence Viewer')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Sequence' })).toBeTruthy();
     expect(screen.getByDisplayValue('TestSeq')).toBeTruthy();
   });
 
