@@ -24,6 +24,7 @@ export default function App() {
   const activeSequence = getActiveSequence();
   const [parts] = useState<{ id: string; name: string }[]>([]);
   const [navSection, setNavSection] = useState<'sequences' | 'constructs'>('sequences');
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectSequence = (id: string) => {
@@ -49,6 +50,24 @@ export default function App() {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
+
+  const canvasContent = (
+    <main className="layout__canvas">
+      {sequences.length > 0 && (
+        <DocumentTabs
+          tabs={sequences.map((s) => ({ id: s.id, label: s.name }))}
+          activeId={activeId ?? ''}
+          onSelect={selectSequence}
+          onClose={closeTab}
+        />
+      )}
+      <SequenceViewer
+        sequence={activeSequence}
+        onChange={(updated) => updateActiveSequence(updated)}
+        onCreateSequence={(created) => addSequence(created)}
+      />
+    </main>
+  );
 
   return (
     <div className="app">
@@ -92,38 +111,30 @@ export default function App() {
             </aside>
           }
           right={
-            <SplitPane
-              primaryPane="right"
-              defaultSize={280}
-              minSize={180}
-              maxSize={480}
-              left={
-                <main className="layout__canvas">
-                  {sequences.length > 0 && (
-                    <DocumentTabs
-                      tabs={sequences.map((s) => ({ id: s.id, label: s.name }))}
-                      activeId={activeId ?? ''}
-                      onSelect={selectSequence}
-                      onClose={closeTab}
-                    />
-                  )}
-                  <SequenceViewer
-                    sequence={activeSequence}
-                    onChange={(updated) => updateActiveSequence(updated)}
-                    onCreateSequence={(created) => addSequence(created)}
-                  />
-                </main>
-              }
-              right={
-                <aside className="layout__sidebar--right">
-                  <PartsLibrary parts={parts} />
-                </aside>
-              }
-            />
+            rightSidebarOpen ? (
+              <SplitPane
+                primaryPane="right"
+                defaultSize={280}
+                minSize={180}
+                maxSize={480}
+                left={canvasContent}
+                right={
+                  <aside className="layout__sidebar--right">
+                    <PartsLibrary parts={parts} />
+                  </aside>
+                }
+              />
+            ) : (
+              canvasContent
+            )
           }
         />
       </div>
-      <StatusBar message="Ready" />
+      <StatusBar
+        message="Ready"
+        rightSidebarOpen={rightSidebarOpen}
+        onToggleRightSidebar={() => setRightSidebarOpen((v) => !v)}
+      />
     </div>
   );
 }

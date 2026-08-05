@@ -627,6 +627,14 @@
   border-top: 1px solid var(--color-border-subtle, #E5E7EB);
 }
 
+.parts-notice {
+  padding: var(--space-6, 6px) var(--space-12, 12px);
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-text-secondary, #6B7280);
+  background: var(--color-bg-sidebar, #F9FAFB);
+  border-bottom: 1px solid var(--color-border-subtle, #E5E7EB);
+}
+
 /* ============================================================
    Feature list (GenBank annotations)
    ============================================================ */

@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import App from '../src/App';
 
 describe('StructuralSmoke', () => {
-  it('renders complete application structure', () => {
+  it('renders complete application structure (right sidebar collapsed by default)', () => {
     render(<App />);
 
     // top-level layout
@@ -14,7 +14,7 @@ describe('StructuralSmoke', () => {
     expect(document.querySelector('.layout__rail')).toBeTruthy();
     expect(document.querySelector('.layout__sidebar--left')).toBeTruthy();
     expect(document.querySelector('.layout__canvas')).toBeTruthy();
-    expect(document.querySelector('.layout__sidebar--right')).toBeTruthy();
+    expect(document.querySelector('.layout__sidebar--right')).toBeNull();
     expect(document.querySelector('.layout__status-bar')).toBeTruthy();
 
     // core feature labels
