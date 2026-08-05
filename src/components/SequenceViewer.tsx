@@ -131,7 +131,28 @@ function statusVariant(status: string): string {
   return ' status--success';
 }
 
-export default function SequenceViewer({ sequence, onChange, onCreateSequence }: Props) {
+const DEFAULT_TABS = [
+  { id: 'text', label: 'Sequence' },
+  { id: 'circular', label: 'Circular Map' },
+  { id: 'linear', label: 'Linear Map' },
+];
+
+const DROPDOWN_TOOLS = [
+  { id: 'restriction', label: 'Restriction Map' },
+  { id: 'primer', label: 'Primer / PCR' },
+  { id: 'orf', label: 'ORF Finder' },
+  { id: 'align', label: 'Sequence Aligner' },
+  { id: 'clone', label: 'Virtual Cloning' },
+  { id: 'plots', label: 'Biochemical Plots' },
+  { id: 'auto_annotate', label: 'Auto-Annotation' },
+  { id: 'motif', label: 'Motif Search' },
+];
+
+export default function SequenceViewer({
+  sequence,
+  onChange,
+  onCreateSequence,
+}: Props) {
   const [name, setName] = useState('');
   const [sequenceText, setSequenceText] = useState('');
   const [topology, setTopology] = useState<string>('circular');
@@ -149,6 +170,29 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
     | 'auto_annotate'
     | 'motif'
   >('text');
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMenuOpen]);
 
   // Interactive sequence window state (R1-R4)
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
@@ -565,26 +609,47 @@ export default function SequenceViewer({ sequence, onChange, onCreateSequence }:
   const numLines = Math.max(1, Math.ceil(totalBp / lineBp));
   const lineIndices = Array.from({ length: numLines }, (_, i) => i);
 
+  const activeDropdownTool = DROPDOWN_TOOLS.find((t) => t.id === viewMode);
+  const visibleTabs = activeDropdownTool
+    ? [...DEFAULT_TABS, activeDropdownTool]
+    : DEFAULT_TABS;
+
   return (
     <div className="canvas__content">
       <div className="canvas__header">
-        <h3 className="canvas__title">Sequence Viewer</h3>
         <ViewTabs
-          tabs={[
-            { id: 'text', label: 'Sequence' },
-            { id: 'circular', label: 'Circular Map' },
-            { id: 'linear', label: 'Linear Map' },
-            { id: 'restriction', label: 'Restriction Map' },
-            { id: 'primer', label: 'Primer / PCR' },
-            { id: 'orf', label: 'ORF Finder' },
-            { id: 'align', label: 'Sequence Aligner' },
-            { id: 'clone', label: 'Virtual Cloning' },
-            { id: 'plots', label: 'Biochemical Plots' },
-            { id: 'auto_annotate', label: 'Auto-Annotation' },
-            { id: 'motif', label: 'Motif Search' },
-          ]}
+          tabs={visibleTabs}
           active={viewMode}
           onChange={(id) => setViewMode(id as any)}
+          rightSlot={
+            <div className="tool-menu-wrapper" ref={menuRef}>
+              <button
+                className="tool-menu-btn"
+                onClick={() => setIsMenuOpen((prev) => !prev)}
+                aria-expanded={isMenuOpen}
+                aria-haspopup="true"
+              >
+                More tools ▾
+              </button>
+              {isMenuOpen && (
+                <div className="tool-menu" role="menu">
+                  {DROPDOWN_TOOLS.map((tool) => (
+                    <button
+                      key={tool.id}
+                      role="menuitem"
+                      className={`tool-menu__item${viewMode === tool.id ? ' tool-menu__item--active' : ''}`}
+                      onClick={() => {
+                        setViewMode(tool.id as any);
+                        setIsMenuOpen(false);
+                      }}
+                    >
+                      {tool.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          }
         />
       </div>
 
