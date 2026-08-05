@@ -15,12 +15,47 @@ const LANE_GAP      = 8;     // gap between lanes; and between lane-0 and backbo
 const RULER_OFFSET  = 28;    // y below backbone where tick ends (world px)
 const TICK_H        = 8;     // tick height above RULER_OFFSET start (world px)
 
+/* ── Label density gate (screen-space) ───────────────────────────────────── */
+const MIN_FEATURE_PX = 22; // screen px span of feature before label appears
+
+/* ── Annotation type priority (lower = more important = appears first) ─────── */
+const TYPE_PRIORITY: Record<string, number> = {
+  gene:             1,
+  CDS:              2,
+  mRNA:             3,
+  promoter:         4,
+  primer_bind:      5,
+  primer:           5,
+  terminator:       6,
+  rep_origin:       7,
+  regulatory:       8,
+  RBS:              9,
+  'sig_peptide':    10,
+  'transit_peptide':11,
+  'misc_RNA':       12,
+  'misc_feature':   13,
+  'repeat_region':  14,
+  restriction_site: 15,
+  site:             15,
+  misc_binding:     16,
+};
+const DEFAULT_PRIORITY = 99;
+
+function typePriority(type: string): number {
+  return TYPE_PRIORITY[type] ?? DEFAULT_PRIORITY;
+}
+
 /* ── Label/ruler constants (screen-space) ───────────────────────────────────── */
-const LABEL_FONT_PX  = 10;   // feature labels
-const RULER_FONT_PX  = 9;    // bp tick labels
-const BASE_FONT_PX   = 10;   // single-base display
-const BASE_SHOW_THR  = 8;    // screen px per base before showing individual bases
-const LABEL_BUMP_PX  = LABEL_FONT_PX + 4; // screen px to bump a colliding label upward
+const LABEL_FONT_PX   = 11;   // feature labels
+const RULER_FONT_PX   = 9;    // bp tick labels
+const BASE_FONT_PX    = 10;   // single-base display
+const BASE_SHOW_THR   = 8;    // screen px per base before showing individual bases
+const LABEL_PAD_X     = 3;
+const LABEL_PAD_Y     = 2;
+const LEADER_DOT_R    = 2.5;
+const LEADER_GAP      = 5;
+const MAX_LABEL_CHARS = 22;
+const LABEL_BUMP_PX   = LABEL_FONT_PX + 4; // screen px to bump a colliding label upward
 
 /* ── Viewport ────────────────────────────────────────────────────────────────── */
 const MIN_SCALE  = 0.10;
@@ -128,31 +163,68 @@ export default function LinearViewer({ sequence }: Props) {
       // wy_lower = world y closest to backbone (less negative); wy_upper = further from backbone
       const wy_lower = -(lane * (LANE_H + LANE_GAP) + LANE_GAP);
       const wy_upper = wy_lower - LANE_H;
-      const w        = Math.max(wx2 - wx1, 2 / scale); // minimum 2 logical px wide
+      const rawW     = wx2 - wx1;
+      const w        = Math.max(rawW, 2 / scale); // minimum 2 logical px wide
 
-      // Feature rect
-      ctx.fillStyle = ann.color || '#3B82F6';
-      ctx.fillRect(wx1, wy_upper, w, LANE_H);
+      const isPrimer = ann.type === 'primer_bind' || ann.type === 'primer';
 
-      // Strand arrow (triangle appended at one end)
-      const featureScreenW = w * scale;
-      if (featureScreenW > 6) { // only render when feature is wide enough to show arrow
-        const arrowW = Math.min(LANE_H * 0.7, w * 0.35);
-        ctx.fillStyle = 'rgba(0,0,0,0.20)';
+      if (isPrimer) {
+        // Dedicated 5'->3' half-arrow primer shape (height = 10 world px)
+        const primerH = Math.min(LANE_H, 10);
+        const wy_mid  = (wy_upper + wy_lower) / 2;
+        const p_upper = wy_mid - primerH / 2;
+        const p_lower = wy_mid + primerH / 2;
+
+        // arrowW equals primerH so screen slope is an exact 45° angle (width == height)
+        const arrowW = Math.min(primerH, w * 0.5);
+
+        ctx.fillStyle = ann.color || '#8B5CF6';
         ctx.beginPath();
-        if (ann.strand === '-') {
-          // Leftward triangle at start edge
-          ctx.moveTo(wx1, wy_upper);
-          ctx.lineTo(wx1 - arrowW, wy_upper + LANE_H / 2);
-          ctx.lineTo(wx1, wy_lower);
+
+        if (ann.strand === '-' || ann.strand === -1) {
+          // Reverse primer: 5' flat edge at wx2; 45° slope up at 3' end to top corner (wx1, p_upper)
+          ctx.moveTo(wx2, p_upper);
+          ctx.lineTo(wx2, p_lower);
+          ctx.lineTo(wx1 + arrowW, p_lower);
+          ctx.lineTo(wx1, p_upper);
+          ctx.closePath();
         } else {
-          // Rightward triangle at end edge
-          ctx.moveTo(wx1 + w, wy_upper);
-          ctx.lineTo(wx1 + w + arrowW, wy_upper + LANE_H / 2);
-          ctx.lineTo(wx1 + w, wy_lower);
+          // Forward primer: 5' flat edge at wx1; 45° slope down at 3' end to bottom corner (wx2, p_lower)
+          ctx.moveTo(wx1, p_lower);
+          ctx.lineTo(wx1, p_upper);
+          ctx.lineTo(wx2 - arrowW, p_upper);
+          ctx.lineTo(wx2, p_lower);
+          ctx.closePath();
         }
-        ctx.closePath();
         ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.30)';
+        ctx.lineWidth   = 1 / scale;
+        ctx.stroke();
+      } else {
+        // Standard feature rectangle
+        ctx.fillStyle = ann.color || '#3B82F6';
+        ctx.fillRect(wx1, wy_upper, w, LANE_H);
+
+        // Strand arrow indicator (dark overlay triangle appended at end edge)
+        const featureScreenW = w * scale;
+        if (featureScreenW > 6) {
+          const arrowW = Math.min(LANE_H * 0.7, w * 0.35);
+          ctx.fillStyle = 'rgba(0,0,0,0.20)';
+          ctx.beginPath();
+          if (ann.strand === '-' || ann.strand === -1) {
+            // Leftward triangle at start edge
+            ctx.moveTo(wx1, wy_upper);
+            ctx.lineTo(wx1 - arrowW, wy_upper + LANE_H / 2);
+            ctx.lineTo(wx1, wy_lower);
+          } else {
+            // Rightward triangle at end edge
+            ctx.moveTo(wx1 + w, wy_upper);
+            ctx.lineTo(wx1 + w + arrowW, wy_upper + LANE_H / 2);
+            ctx.lineTo(wx1 + w, wy_lower);
+          }
+          ctx.closePath();
+          ctx.fill();
+        }
       }
     }
 
@@ -224,7 +296,7 @@ export default function LinearViewer({ sequence }: Props) {
       }
     }
 
-    // ── Feature labels with horizontal collision avoidance ──
+    // ── Feature labels with type-priority ranking and density gate ──
     ctx.font         = `${LABEL_FONT_PX}px system-ui, sans-serif`;
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
@@ -234,49 +306,78 @@ export default function LinearViewer({ sequence }: Props) {
       a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
     const placed: AABB[] = [];
 
-    for (const ann of anns) {
+    const effectiveMinFeaturePx = scale >= 4.0 ? 4 : (scale >= 2.0 ? 10 : MIN_FEATURE_PX);
+
+    const sortedAnns = [...anns].sort((a, b) => typePriority(a.type) - typePriority(b.type));
+
+    for (const ann of sortedAnns) {
       const lane = laneMap.get(ann.id) ?? 0;
       const wx1  = bpToWX(ann.start);
       const wx2  = bpToWX(ann.end);
       if (wx2 < visMinX - MARGIN || wx1 > visMaxX + MARGIN) continue;
 
+      const isPrimer = ann.type === 'primer_bind' || ann.type === 'primer';
+      const isPoint  = ann.end <= ann.start || Math.abs(ann.end - ann.start) <= 1;
+      const spanBp   = isPoint ? Math.max(12, totalBp / 200) : (ann.end - ann.start);
+      const featureScreenPx = (spanBp / totalBp) * WORLD_W * scale;
+
+      const minPx = isPrimer ? (scale >= 1.5 ? 4 : 10) : effectiveMinFeaturePx;
+      if (featureScreenPx < minPx) continue;
+
+
       const midWX   = (wx1 + wx2) / 2;
       const wy_lower = -(lane * (LANE_H + LANE_GAP) + LANE_GAP);
       const wy_upper = wy_lower - LANE_H;
 
-      const raw   = ann.name || ann.type || '';
-      const label = raw.length > 24 ? raw.slice(0, 22) + '\u2026' : raw;
+      const raw   = ann.name || ann.notes || ann.type || '';
+      const label = raw.length > MAX_LABEL_CHARS
+        ? raw.slice(0, MAX_LABEL_CHARS - 2) + '\u2026' : raw;
       const tw    = ctx.measureText(label).width;
-      const hw    = tw / 2 + 2;
-      const hh    = LABEL_FONT_PX / 2 + 1;
+      const hw    = tw / 2 + LABEL_PAD_X;
+      const hh    = LABEL_FONT_PX / 2 + LABEL_PAD_Y;
 
-      // Default: label centre just above the feature's upper edge
       const baseSX = wToSX(midWX);
-      let   lsy    = wToSY(wy_upper) - hh - 2;
+      const initialLSY = wToSY(wy_upper) - hh - 2;
 
-      const defaultBox: AABB = { l: baseSX - hw, r: baseSX + hw, t: lsy - hh, b: lsy + hh };
+      let lsy = initialLSY;
       let bumped = false;
-      if (placed.some((p) => aabbHit(defaultBox, p))) {
-        lsy -= LABEL_BUMP_PX; // bump upward by one label height + gap
-        bumped = true;
+
+      // Try up to 4 bump levels to clear colliding labels
+      for (let bump = 0; bump < 4; bump++) {
+        const testSY = initialLSY - bump * LABEL_BUMP_PX;
+        const box: AABB = { l: baseSX - hw, r: baseSX + hw, t: testSY - hh, b: testSY + hh };
+        if (!placed.some((p) => aabbHit(box, p))) {
+          lsy = testSY;
+          if (bump > 0) bumped = true;
+          break;
+        }
       }
 
       const finalBox: AABB = { l: baseSX - hw, r: baseSX + hw, t: lsy - hh, b: lsy + hh };
+      if (placed.some((p) => aabbHit(finalBox, p))) {
+        // If still colliding after 4 bumps, omit label to prevent clutter
+        continue;
+      }
       placed.push(finalBox);
 
       // Skip drawing if label is fully off-screen
       if (baseSX + hw < 0 || baseSX - hw > logW || lsy + hh < 0 || lsy - hh > logH) continue;
 
-      // Vertical connector from label bottom to feature top when bumped
+      // Vertical leader line and dot from feature top to bumped label
       if (bumped) {
         const featureTopSY = wToSY(wy_upper);
         ctx.beginPath();
-        ctx.moveTo(baseSX, lsy + hh + 1);
-        ctx.lineTo(baseSX, featureTopSY - 2);
+        ctx.moveTo(baseSX, featureTopSY);
+        ctx.lineTo(baseSX, lsy + hh + LEADER_GAP);
         ctx.strokeStyle = cSecond;
         ctx.lineWidth   = 1;
         ctx.lineCap     = 'round';
         ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(baseSX, featureTopSY, LEADER_DOT_R, 0, 2 * Math.PI);
+        ctx.fillStyle = ann.color || '#3B82F6';
+        ctx.fill();
       }
 
       ctx.fillStyle = cPrimary;
@@ -334,24 +435,28 @@ export default function LinearViewer({ sequence }: Props) {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
   }, []);
 
-  /* ── Wheel zoom (non-passive) ─────────────────────────────────────────────── */
+  /* ── Wheel zoom & pan (non-passive) ───────────────────────────────────────── */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      if (e.shiftKey) {
+        // Shift + wheel = horizontal pan
+        panRef.current.x -= e.deltaY;
+        requestDraw();
+        return;
+      }
       const dpr  = window.devicePixelRatio || 1;
       const logW = canvas.width  / dpr;
-      const logH = canvas.height / dpr;
       const rect = canvas.getBoundingClientRect();
       const mx   = e.clientX - rect.left;
-      const my   = e.clientY - rect.top;
       const prev = scaleRef.current;
       const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE,
         prev * (e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP)));
       const wx = (mx - logW / 2 - panRef.current.x) / prev;
-      const wy = (my - logH / 2 - panRef.current.y) / prev;
-      panRef.current   = { x: mx - logW / 2 - wx * next, y: my - logH / 2 - wy * next };
+      panRef.current.x = mx - logW / 2 - wx * next;
+      // panRef.current.y is kept constant — no vertical shift on zoom
       scaleRef.current = next;
       requestDraw();
     };
@@ -361,9 +466,13 @@ export default function LinearViewer({ sequence }: Props) {
 
   /* ── Click-drag pan ─────────────────────────────────────────────────────── */
   const onMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    dragRef.current = { active: true,
-      sx: e.clientX, sy: e.clientY,
-      px: panRef.current.x, py: panRef.current.y };
+    dragRef.current = {
+      active: true,
+      sx: e.clientX,
+      sy: e.clientY,
+      px: panRef.current.x,
+      py: panRef.current.y,
+    };
     if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing';
   }, []);
 
@@ -371,7 +480,7 @@ export default function LinearViewer({ sequence }: Props) {
     if (!dragRef.current.active) return;
     panRef.current = {
       x: dragRef.current.px + (e.clientX - dragRef.current.sx),
-      y: dragRef.current.py + (e.clientY - dragRef.current.sy),
+      y: dragRef.current.py, // strictly zero out vertical drag component
     };
     requestDraw();
   }, [requestDraw]);
