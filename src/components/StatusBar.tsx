@@ -4,9 +4,16 @@ import { useSequenceStore } from '../store/useSequenceStore';
 type Props = {
   message?: string;
   indicator?: React.ReactNode;
+  rightSidebarOpen?: boolean;
+  onToggleRightSidebar?: () => void;
 };
 
-export default function StatusBar({ message = 'NAipE v0.1.0', indicator }: Props) {
+export default function StatusBar({
+  message = 'NAipE v0.1.0',
+  indicator,
+  rightSidebarOpen = false,
+  onToggleRightSidebar,
+}: Props) {
   const { theme, toggleTheme } = useSequenceStore();
 
   return (
@@ -17,6 +24,15 @@ export default function StatusBar({ message = 'NAipE v0.1.0', indicator }: Props
       </div>
       <div className="status-bar__right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         {indicator}
+        {onToggleRightSidebar && (
+          <button
+            className="button button--ghost"
+            style={{ height: '24px', padding: '0 8px', fontSize: '11px', gap: '4px' }}
+            onClick={onToggleRightSidebar}
+          >
+            <span>{rightSidebarOpen ? 'Hide right sidebar' : 'Show right sidebar'}</span>
+          </button>
+        )}
         <button
           className="button button--ghost"
           style={{ height: '24px', padding: '0 8px', fontSize: '11px', gap: '4px' }}
