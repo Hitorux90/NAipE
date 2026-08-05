@@ -660,7 +660,7 @@
   gap: var(--space-8, 8px);
   padding: var(--space-4, 4px) var(--space-8, 8px);
   border-left: 3px solid var(--color-part-default, #888888);
-  background: var(--color-canvas, #FFFFFF);
+  background: var(--color-bg-sidebar, #F9FAFB);
   border-radius: var(--radius-sm, 4px);
   font-size: var(--font-size-ui-small, 12px);
   cursor: pointer;
@@ -792,8 +792,8 @@
   line-height: 16px;
   font-size: 11px;
   font-weight: 600;
-  color: #111827; /* Black text per R3 spec */
-  background: rgba(255, 255, 255, 0.95);
+  color: var(--color-text-primary, #111827);
+  background: var(--color-bg-sidebar, rgba(255, 255, 255, 0.95));
   border-radius: 3px;
   padding: 0 4px;
   white-space: nowrap;
@@ -804,6 +804,17 @@
   box-sizing: border-box;
   cursor: pointer;
   transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+:root.dark .seq-feature-label {
+  color: var(--color-text-primary, #F8FAFC);
+  background: var(--color-bg-sidebar, #1E293B);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+:root.dark .feature-tile {
+  background: var(--color-bg-sidebar, #1E293B);
+  color: var(--color-text-primary, #F8FAFC);
 }
 
 .seq-feature-label:hover {

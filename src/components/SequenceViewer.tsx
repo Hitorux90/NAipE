@@ -7,6 +7,7 @@ export type Sequence = SequenceState; // convenience re-export
 import CircularViewer from './CircularViewer';
 import LinearViewer from './LinearViewer';
 import ViewTabs from './ViewTabs';
+import { useSequenceStore } from '../store/useSequenceStore';
 
 import RestrictionMapper from './RestrictionMapper';
 import PrimerDesigner from './PrimerDesigner';
@@ -27,9 +28,12 @@ import {
 /**
  * Robustly converts any color format (hex, rgb, named color) into a valid rgba(r,g,b,alpha) string.
  */
-function colorToRgba(colorStr?: string, alpha: number = 0.25): string {
-  if (!colorStr) return `rgba(37, 99, 235, ${alpha})`;
+function colorToRgba(colorStr?: string, alpha: number = 0.25, isDark: boolean = false): string {
+  const fallback = isDark ? `rgba(96, 165, 250, ${alpha})` : `rgba(37, 99, 235, ${alpha})`;
+  if (!colorStr) return fallback;
   const c = colorStr.trim().toLowerCase();
+
+  let r = 37, g = 99, b = 235;
 
   if (c.startsWith('#')) {
     let hex = c.slice(1);
@@ -37,41 +41,57 @@ function colorToRgba(colorStr?: string, alpha: number = 0.25): string {
       hex = hex.split('').map((x) => x + x).join('');
     }
     if (hex.length === 6) {
-      const r = parseInt(hex.slice(0, 2), 16);
-      const g = parseInt(hex.slice(2, 4), 16);
-      const b = parseInt(hex.slice(4, 6), 16);
-      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      r = parseInt(hex.slice(0, 2), 16);
+      g = parseInt(hex.slice(2, 4), 16);
+      b = parseInt(hex.slice(4, 6), 16);
+    } else {
+      return fallback;
     }
   } else if (c.startsWith('rgb')) {
     const matches = c.match(/\d+/g);
     if (matches && matches.length >= 3) {
-      return `rgba(${matches[0]}, ${matches[1]}, ${matches[2]}, ${alpha})`;
+      r = parseInt(matches[0], 10);
+      g = parseInt(matches[1], 10);
+      b = parseInt(matches[2], 10);
+    } else {
+      return fallback;
+    }
+  } else {
+    const namedColors: Record<string, [number, number, number]> = {
+      red: [239, 68, 68],
+      blue: [37, 99, 235],
+      green: [34, 197, 94],
+      yellow: [234, 179, 8],
+      purple: [168, 85, 247],
+      orange: [249, 115, 22],
+      pink: [236, 72, 153],
+      gray: [107, 114, 128],
+      cyan: [6, 182, 212],
+      teal: [20, 184, 166],
+    };
+    if (namedColors[c]) {
+      [r, g, b] = namedColors[c];
+    } else {
+      return fallback;
     }
   }
 
-  const namedColors: Record<string, string> = {
-    red: '239, 68, 68',
-    blue: '37, 99, 235',
-    green: '34, 197, 94',
-    yellow: '234, 179, 8',
-    purple: '168, 85, 247',
-    orange: '249, 115, 22',
-    pink: '236, 72, 153',
-    gray: '107, 114, 128',
-    cyan: '6, 182, 212',
-    teal: '20, 184, 166',
-  };
-
-  if (namedColors[c]) {
-    return `rgba(${namedColors[c]}, ${alpha})`;
+  // In dark mode, boost low-luminance colors so feature highlights remain readable
+  if (isDark) {
+    const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    if (lum < 70) {
+      r = Math.min(255, r + 75);
+      g = Math.min(255, g + 75);
+      b = Math.min(255, b + 75);
+    }
   }
 
-  return `rgba(37, 99, 235, ${alpha})`;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 // Helper style generators to avoid inline style objects in JSX (vitest requirement)
-const getTileStyle = (color?: string, isSelected?: boolean) => ({
-  borderLeftColor: color || '#888888',
+const getTileStyle = (color?: string, isSelected?: boolean, isDark?: boolean) => ({
+  borderLeftColor: color || (isDark ? '#60A5FA' : '#888888'),
   borderLeftWidth: isSelected ? '5px' : '3px',
 });
 
@@ -91,22 +111,23 @@ const getFeatureWrapperStyle = (
 
 const getFeatureLabelStyle = (
   color: string,
-  isSelected?: boolean
+  isSelected?: boolean,
+  isDark?: boolean
 ) => ({
-  borderLeftColor: color || '#888888',
-  borderColor: isSelected ? color || '#2563EB' : undefined,
-  boxShadow: isSelected ? `0 0 6px ${color || '#2563EB'}` : undefined,
-  backgroundColor: isSelected ? colorToRgba(color, 0.35) : undefined,
+  borderLeftColor: color || (isDark ? '#60A5FA' : '#888888'),
+  borderColor: isSelected ? color || (isDark ? '#60A5FA' : '#2563EB') : undefined,
+  boxShadow: isSelected ? `0 0 6px ${color || (isDark ? '#60A5FA' : '#2563EB')}` : undefined,
+  backgroundColor: isSelected ? colorToRgba(color, isDark ? 0.45 : 0.35, isDark) : undefined,
 });
 
-const getUnderlineStyle = (color: string) => ({
-  backgroundColor: color || '#888888',
+const getUnderlineStyle = (color: string, isDark?: boolean) => ({
+  backgroundColor: color || (isDark ? '#60A5FA' : '#888888'),
 });
 
-const getCharFeatureTintStyle = (color?: string) => {
+const getCharFeatureTintStyle = (color?: string, isDark?: boolean) => {
   if (!color) return undefined;
   return {
-    backgroundColor: colorToRgba(color, 0.25),
+    backgroundColor: colorToRgba(color, isDark ? 0.35 : 0.25, isDark),
   };
 };
 
@@ -153,6 +174,8 @@ export default function SequenceViewer({
   onChange,
   onCreateSequence,
 }: Props) {
+  const theme = useSequenceStore((s) => s.theme);
+  const isDark = theme === 'dark';
   const [name, setName] = useState('');
   const [sequenceText, setSequenceText] = useState('');
   const [topology, setTopology] = useState<string>('circular');
@@ -685,7 +708,7 @@ export default function SequenceViewer({
               <h4 className="feature-list__title">Features ({sequence.annotations.length})</h4>
               {sequence.annotations.map((f) => {
                 const isSelected = selectedFeatureId === f.id;
-                const tileStyle = getTileStyle(f.color, isSelected);
+                const tileStyle = getTileStyle(f.color, isSelected, isDark);
                 const tileClass = `feature-tile${isSelected ? ' feature-tile--selected' : ''}`;
                 return (
                   <div
@@ -768,7 +791,8 @@ export default function SequenceViewer({
                                   );
                                   const labelStyle = getFeatureLabelStyle(
                                     sp.annotation.color || '#888888',
-                                    isLabelSelected
+                                    isLabelSelected,
+                                    isDark
                                   );
 
                                   const labelClass = `seq-feature-label${
@@ -853,11 +877,12 @@ export default function SequenceViewer({
                                   const charTintStyle = getCharFeatureTintStyle(
                                     isHighlighted && activeSelectedFeature
                                       ? activeSelectedFeature.color || '#2563EB'
-                                      : undefined
+                                      : undefined,
+                                    isDark
                                   );
 
                                   const underlineStyle = coveringAnno
-                                    ? getUnderlineStyle(coveringAnno.color || '#888888')
+                                    ? getUnderlineStyle(coveringAnno.color || '#888888', isDark)
                                     : undefined;
 
                                   return (
