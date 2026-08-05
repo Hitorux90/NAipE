@@ -655,6 +655,19 @@
   background: var(--color-canvas, #FFFFFF);
   border-radius: var(--radius-sm, 4px);
   font-size: var(--font-size-ui-small, 12px);
+  cursor: pointer;
+  transition: background var(--transition-fast, 100ms), transform var(--transition-fast, 100ms);
+}
+
+.feature-tile:hover {
+  background: var(--color-hover-bg, #E5E7EB);
+  transform: translateX(2px);
+}
+
+.feature-tile--selected {
+  background: var(--color-active-bg, #D1D5DB);
+  border-left-width: 5px;
+  box-shadow: inset 0 0 0 1px var(--color-primary-accent, #2563EB);
 }
 
 .feature-tile__name {
@@ -687,6 +700,177 @@
   white-space: nowrap;
   max-width: 160px;
 }
+
+/* ============================================================
+   Sequence Window Improvement (R1-R4)
+   ============================================================ */
+.seq-window {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8, 8px);
+  border: 1px solid var(--color-border-subtle, #E5E7EB);
+  border-radius: 6px;
+  background: var(--color-bg-canvas, #FFFFFF);
+  overflow: hidden;
+}
+
+.seq-lines-wrapper {
+  max-height: 480px;
+  overflow-y: auto;
+  overflow-x: auto;
+  background: var(--color-bg-canvas, #FFFFFF);
+  padding: var(--space-8, 8px) 0;
+}
+
+.seq-line {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  padding: 4px 8px;
+  font-family: var(--font-family-sequence, "Fira Code", "Courier New", monospace);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.seq-line--selected {
+  /* Line selection background removed to restrict highlight exclusively to feature nucleotides */
+}
+
+.seq-line__margin {
+  width: 70px;
+  min-width: 70px;
+  text-align: right;
+  padding-right: 12px;
+  color: var(--color-text-secondary, #6B7280);
+  font-weight: 500;
+  user-select: none;
+  -webkit-user-select: none;
+  border-right: 1px solid var(--color-border-subtle, #E5E7EB);
+  flex-shrink: 0;
+}
+
+.seq-line__content {
+  display: flex;
+  flex-direction: column;
+  padding-left: 12px;
+  flex: 1;
+}
+
+.seq-line__tracks {
+  position: relative;
+  margin-bottom: 2px;
+}
+
+.seq-line__track {
+  position: relative;
+  height: 18px;
+  margin-bottom: 1px;
+  font-family: var(--font-family-sequence, "Fira Code", "Courier New", monospace);
+  font-size: 13px;
+}
+
+.seq-feature-wrapper {
+  position: absolute;
+  height: 18px;
+  font-family: var(--font-family-sequence, "Fira Code", "Courier New", monospace);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.seq-feature-label {
+  display: block;
+  width: 100%;
+  height: 16px;
+  line-height: 16px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #111827; /* Black text per R3 spec */
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 3px;
+  padding: 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border-left: 3px solid var(--feature-color, #888888);
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.seq-feature-label:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+}
+
+.seq-feature-label--selected {
+  border-width: 2px;
+  font-weight: 700;
+  z-index: 5;
+}
+
+.seq-line__bases {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  white-space: pre;
+}
+
+.seq-block {
+  display: inline-flex;
+  flex-direction: row;
+}
+
+.seq-char {
+  display: inline-block;
+  width: 1ch;
+  text-align: center;
+  position: relative;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.seq-window--focused {
+  border-color: var(--color-primary-accent, #2563EB);
+  box-shadow: 0 0 0 1px var(--color-primary-accent, #2563EB);
+}
+
+.seq-char--feature-highlight {
+  background: var(--feature-tint, rgba(37, 99, 235, 0.12));
+}
+
+.seq-caret-line {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: -1px;
+  width: 2px;
+  background: var(--color-primary-accent, #2563EB);
+  z-index: 10;
+  animation: seq-caret-blink 1s infinite;
+}
+
+.seq-caret-line--end {
+  left: auto;
+  right: -1px;
+}
+
+@keyframes seq-caret-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+.seq-char__underline {
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 1px;
+  background: var(--feature-color, #888888);
+}
+
 
 /* ============================================================
    Canvas Sequence Viewers — CircularViewer & LinearViewer
