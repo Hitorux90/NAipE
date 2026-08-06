@@ -181,7 +181,7 @@ export default function LinearViewer({ sequence }: Props) {
         ctx.fillStyle = ann.color || '#8B5CF6';
         ctx.beginPath();
 
-        if (ann.strand === '-' || ann.strand === -1) {
+        if (ann.strand === '-' || (ann.strand as string) === '-1') {
           // Reverse primer: 5' flat edge at wx2; 45° slope up at 3' end to top corner (wx1, p_upper)
           ctx.moveTo(wx2, p_upper);
           ctx.lineTo(wx2, p_lower);
@@ -211,7 +211,7 @@ export default function LinearViewer({ sequence }: Props) {
           const arrowW = Math.min(LANE_H * 0.7, w * 0.35);
           ctx.fillStyle = 'rgba(0,0,0,0.20)';
           ctx.beginPath();
-          if (ann.strand === '-' || ann.strand === -1) {
+          if (ann.strand === '-' || (ann.strand as string) === '-1') {
             // Leftward triangle at start edge
             ctx.moveTo(wx1, wy_upper);
             ctx.lineTo(wx1 - arrowW, wy_upper + LANE_H / 2);
