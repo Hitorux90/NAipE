@@ -551,16 +551,34 @@ def _handle_command(cmd, msg_id, payload):
         except Exception as exc:
             return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
 
+    if cmd == "list_enzymes":
+        try:
+            try:
+                from .restriction import get_all_enzymes_catalog
+            except ImportError:
+                from restriction import get_all_enzymes_catalog
+            catalog = get_all_enzymes_catalog()
+            return {
+                "id": msg_id,
+                "type": "response",
+                "command": "list_enzymes",
+                "payload": {"enzymes": catalog},
+                "ok": True,
+            }
+        except Exception as exc:
+            return _error(msg_id, cmd, "INTERNAL_ERROR", str(exc))
+
     if cmd == "digest":
         sequence = payload.get("sequence") or ""
         topology = payload.get("topology") or "circular"
         enzymes = payload.get("enzymes") or []
+        mode = payload.get("mode") or "combined"
         try:
             try:
                 from .restriction import find_cuts
             except ImportError:
                 from restriction import find_cuts
-            cuts = find_cuts(sequence, topology, enzymes)
+            cuts = find_cuts(sequence, topology, enzymes, mode=mode)
             return {
                 "id": msg_id,
                 "type": "response",
