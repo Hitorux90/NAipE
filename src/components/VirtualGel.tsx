@@ -35,15 +35,37 @@ export default function VirtualGel({ sequenceName, totalBp, cuts, selectedEnzyme
   }
 
   return (
-    <div className="virtual-gel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-      <h4 style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-secondary)' }}>
-        Virtual Agarose Gel Simulator (1% Agarose)
-      </h4>
+    <div className="virtual-gel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+      <div style={{ textAlign: 'center', width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
+        <h4 style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+          Virtual Agarose Gel Simulator (1% Agarose)
+        </h4>
+        {sequenceName && (
+          <div
+            title={sequenceName}
+            style={{
+              margin: '2px 0 0 0',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: 'var(--color-text-primary, #F1F5F9)',
+              maxWidth: '100%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {sequenceName}
+          </div>
+        )}
+      </div>
       <svg
         width={gelWidth}
         height={gelHeight}
         viewBox={`0 0 ${gelWidth} ${gelHeight}`}
         style={{
+          width: '100%',
+          maxWidth: `${gelWidth}px`,
+          height: 'auto',
           background: '#0B0F19', // Dark UV gel box background
           borderRadius: '8px',
           border: '2px solid var(--color-border-subtle, #1E293B)',
@@ -51,13 +73,13 @@ export default function VirtualGel({ sequenceName, totalBp, cuts, selectedEnzyme
         }}
       >
         {/* Gel Wells */}
-        <rect x="40" y="20" width="80" height="8" rx="2" fill="#1E293B" />
-        <text x="80" y="16" textAnchor="middle" fill="#94A3B8" fontSize="10" fontWeight="600">
+        <rect x="30" y="20" width="80" height="8" rx="2" fill="#1E293B" />
+        <text x="70" y="16" textAnchor="middle" fill="#94A3B8" fontSize="10" fontWeight="600">
           Ladder
         </text>
 
-        <rect x="180" y="20" width="100" height="8" rx="2" fill="#1E293B" />
-        <text x="230" y="16" textAnchor="middle" fill="#94A3B8" fontSize="10" fontWeight="600">
+        <rect x="150" y="20" width="90" height="8" rx="2" fill="#1E293B" />
+        <text x="195" y="16" textAnchor="middle" fill="#94A3B8" fontSize="10" fontWeight="600">
           Digest Sample
         </text>
 
@@ -68,9 +90,9 @@ export default function VirtualGel({ sequenceName, totalBp, cuts, selectedEnzyme
             <g key={`ladder-${bp}`}>
               {/* Fluorescent EtBr/GelRed DNA Band */}
               <line
-                x1="45"
+                x1="35"
                 y1={y}
-                x2="115"
+                x2="105"
                 y2={y}
                 stroke="#60A5FA" // Cyan UV glow
                 strokeWidth="3"
@@ -78,7 +100,7 @@ export default function VirtualGel({ sequenceName, totalBp, cuts, selectedEnzyme
                 opacity="0.85"
                 style={{ filter: 'drop-shadow(0 0 3px #3B82F6)' }}
               />
-              <text x="35" y={y + 3} textAnchor="end" fill="#64748B" fontSize="9" fontFamily="monospace">
+              <text x="26" y={y + 3} textAnchor="end" fill="#64748B" fontSize="9" fontFamily="monospace">
                 {bp >= 1000 ? `${bp / 1000}k` : `${bp}`}
               </text>
             </g>
@@ -91,16 +113,16 @@ export default function VirtualGel({ sequenceName, totalBp, cuts, selectedEnzyme
           return (
             <g key={`frag-${idx}-${fragLen}`}>
               <line
-                x1="185"
+                x1="155"
                 y1={y}
-                x2="275"
+                x2="240"
                 y2={y}
                 stroke="#38BDF8" // Bright cyan fluorescent glow
                 strokeWidth="4"
                 strokeLinecap="round"
                 style={{ filter: 'drop-shadow(0 0 5px #0EA5E9)' }}
               />
-              <text x="282" y={y + 3} textAnchor="start" fill="#F1F5F9" fontSize="10" fontFamily="monospace" fontWeight="600">
+              <text x="246" y={y + 3} textAnchor="start" fill="#F1F5F9" fontSize="10" fontFamily="monospace" fontWeight="600">
                 {fragLen} bp
               </text>
             </g>
