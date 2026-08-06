@@ -55,7 +55,7 @@ export default function RestrictionMapper({ sequence }: Props) {
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('unique');
   const [digestMode, setDigestMode] = useState<DigestMode>('combined');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showNonCutters, setShowNonCutters] = useState(false);
+  const [showNonCutters, setShowNonCutters] = useState(true);
 
   // Fetch full enzyme catalog from sidecar on mount
   useEffect(() => {
@@ -119,12 +119,12 @@ export default function RestrictionMapper({ sequence }: Props) {
       const info = enzymeCatalog[name];
       const count = enzymeCutCounts[name] || 0;
 
-      // Filter by search query
-      if (q && !name.toUpperCase().includes(q) && !info.site.includes(q)) {
-        return false;
+      // When search query is non-empty, search bypasses category filters
+      if (q) {
+        return name.toUpperCase().includes(q) || (info?.site || '').includes(q);
       }
 
-      // Filter by category tab
+      // Filter by category tab when search query is empty
       if (filterCategory === 'unique') return count === 1;
       if (filterCategory === 'multi') return count > 1;
       if (filterCategory === 'all_cutters') return count >= 1;
@@ -306,14 +306,17 @@ export default function RestrictionMapper({ sequence }: Props) {
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '140px', overflowY: 'auto', padding: '4px' }}>
             {displayedEnzymes.map((name) => {
+              const info = enzymeCatalog[name];
               const isSelected = selectedEnzymes.includes(name);
               const count = enzymeCutCounts[name] ?? 0;
               const isNonCutter = count === 0;
+              const offsetStr = info?.cut_offset !== undefined ? ` · ${info.cut_offset}` : '';
 
               return (
                 <button
                   key={name}
                   className={`button ${isSelected ? 'button--primary' : 'button--secondary'}`}
+                  title={`${name}: ${info?.site || ''} (cut offset: ${info?.cut_offset ?? ''})`}
                   style={{
                     height: '26px',
                     fontSize: '11px',
@@ -326,7 +329,7 @@ export default function RestrictionMapper({ sequence }: Props) {
                   }}
                   onClick={() => toggleEnzyme(name)}
                 >
-                  <span>{name}</span>
+                  <span>{name}{offsetStr}</span>
                   <span
                     style={{
                       fontSize: '9px',
