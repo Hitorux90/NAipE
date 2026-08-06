@@ -277,7 +277,7 @@ pub fn run() {
                 Ok(())
             })
         })
-        .invoke_handler(tauri::generate_handler![greet, get_parts, create_sequence, new_sequence, list_sequences, save_dna, save_fasta, open_file, save_as_dna, save_as_fasta, save_as_gb, open_sequence, create_construct, add_part_to_construct, save_construct, list_constructs, open_construct, create_annotation, list_annotations, undo, redo, digest_sequence, analyze_primer, simulate_pcr, find_orfs, align_sequences, simulate_assembly, compute_properties, auto_annotate, search_motif])
+        .invoke_handler(tauri::generate_handler![greet, get_parts, create_sequence, new_sequence, list_sequences, save_dna, save_fasta, open_file, save_as_dna, save_as_fasta, save_as_gb, open_sequence, create_construct, add_part_to_construct, save_construct, list_constructs, open_construct, create_annotation, list_annotations, undo, redo, digest_sequence, list_enzymes, analyze_primer, simulate_pcr, find_orfs, align_sequences, simulate_assembly, compute_properties, auto_annotate, search_motif])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -890,18 +890,37 @@ async fn digest_sequence(
     sequence: String,
     topology: String,
     enzymes: Vec<String>,
+    mode: Option<String>,
 ) -> Result<serde_json::Value, SidecarError> {
     let req = sidecar::SidecarRequest::new(uuid::Uuid::new_v4(), "digest")
         .with_payload(serde_json::json!({
             "sequence": sequence,
             "topology": topology,
             "enzymes": enzymes,
+            "mode": mode.unwrap_or_else(|| "combined".to_string()),
         }));
     let resp = sidecar.send_request(req).await.map_err(|e| SidecarError {
         error_code: "SIDECAR_ERROR".into(),
         layer: "tauri".into(),
         message_dev: e.to_string(),
         message_user: "Restriction digest failed".into(),
+        recoverable: true,
+        context: None,
+    })?;
+    Ok(resp.result.unwrap_or_default())
+}
+
+#[tauri::command]
+async fn list_enzymes(
+    sidecar: tauri::State<'_, Arc<SidecarManager>>,
+) -> Result<serde_json::Value, SidecarError> {
+    let req = sidecar::SidecarRequest::new(uuid::Uuid::new_v4(), "list_enzymes")
+        .with_payload(serde_json::json!({}));
+    let resp = sidecar.send_request(req).await.map_err(|e| SidecarError {
+        error_code: "SIDECAR_ERROR".into(),
+        layer: "tauri".into(),
+        message_dev: e.to_string(),
+        message_user: "Fetching restriction enzymes failed".into(),
         recoverable: true,
         context: None,
     })?;
