@@ -24,30 +24,33 @@ RESTRICTION_ENZYMES: Dict[str, Tuple[str, int]] = {
 
 def get_all_enzymes_catalog() -> Dict[str, Dict[str, Any]]:
     """
-    Returns full catalog of available restriction enzymes from Biopython (1000+ enzymes)
-    with fallback to standard RESTRICTION_ENZYMES.
+    Returns full catalog of available restriction enzymes from Biopython (1000+ enzymes).
+    Raises ImportError if Biopython is not available in the sidecar Python environment.
     """
-    catalog = {}
     try:
         from Bio.Restriction import AllEnzymes, Restriction
-        for enz_name in AllEnzymes:
-            name_str = str(enz_name)
-            enz = getattr(Restriction, name_str, None)
-            if enz and hasattr(enz, "site") and enz.site:
-                site_str = str(enz.site).upper()
-                offset = getattr(enz, "fst5", 1)
-                if offset is None or offset < 0:
-                    offset = 1
-                catalog[name_str] = {
-                    "name": name_str,
-                    "site": site_str,
-                    "cut_offset": int(offset),
-                    "is_blunt": bool(getattr(enz, "is_blunt", lambda: False)()),
-                }
-    except Exception:
-        pass
+    except ImportError as err:
+        raise ImportError(
+            "Biopython is missing from sidecar Python — run: <python> -m pip install -r src-tauri/sidecar/requirements.txt"
+        ) from err
 
-    # Ensure standard fallback enzymes are always present
+    catalog = {}
+    for enz_name in AllEnzymes:
+        name_str = str(enz_name)
+        enz = getattr(Restriction, name_str, None)
+        if enz and hasattr(enz, "site") and enz.site:
+            site_str = str(enz.site).upper()
+            offset = getattr(enz, "fst5", 1)
+            if offset is None:
+                offset = 1
+            catalog[name_str] = {
+                "name": name_str,
+                "site": site_str,
+                "cut_offset": int(offset),
+                "is_blunt": bool(getattr(enz, "is_blunt", lambda: False)()),
+            }
+
+    # Ensure standard fallback enzymes are always present in catalog
     for name, (site, offset) in RESTRICTION_ENZYMES.items():
         if name not in catalog:
             catalog[name] = {

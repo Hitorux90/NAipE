@@ -74,16 +74,31 @@ def test_catalog_sample_enzymes_match_biopython(name):
 
 def _compute_biopython_combined_frags(seq, is_circular, enzymes):
     """Compute expected combined digest physical fragment lengths using Biopython cut search."""
-    s = Seq(seq)
+    seq_len = len(seq)
+    seq_upper = seq.upper()
     bio_cut_positions = []
+
     for ename in enzymes:
         enz = getattr(R, ename)
-        # Biopython search returns 1-based cut positions -> convert to 0-based cut index
-        pos = [p - 1 for p in enz.search(s, linear=not is_circular)]
-        bio_cut_positions.extend(pos)
+        site = str(enz.site).upper()
+        offset = enz.fst5
+        site_len = len(site)
+        search_seq = seq_upper + (seq_upper[: site_len - 1] if is_circular else "")
+
+        start_idx = 0
+        while True:
+            idx = search_seq.find(site, start_idx)
+            if idx == -1:
+                break
+            if not is_circular and idx >= seq_len:
+                break
+            pos = (idx + offset) % seq_len
+            if pos == 0:
+                pos = seq_len
+            bio_cut_positions.append(pos)
+            start_idx = idx + 1
 
     bio_cut_positions = sorted(bio_cut_positions)
-    seq_len = len(seq)
 
     if not bio_cut_positions:
         return [seq_len]
@@ -110,6 +125,7 @@ PLASMID_DIGEST_TESTS = [
     ("pMG_SP-4_speB.gb", ["EcoRI", "SpeI", "HindIII"]),
     ("PRL-24.gb", ["XhoI", "HindIII"]),
     ("pL41_Trf_SP4.gb", ["HindIII", "SpeI"]),
+    ("pL41_Trf_SP4.gb", ["XhoI", "UcoMSI"]),
 ]
 
 

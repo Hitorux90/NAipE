@@ -8,6 +8,17 @@ import json
 import os
 import sys
 
+try:
+    import Bio  # noqa: F401
+except ImportError as err:
+    sys.stderr.write(
+        "Biopython missing from sidecar Python — run: <python> -m pip install -r src-tauri/sidecar/requirements.txt\n"
+    )
+    sys.stderr.flush()
+    raise ImportError(
+        "Biopython missing from sidecar Python — run: <python> -m pip install -r src-tauri/sidecar/requirements.txt"
+    ) from err
+
 
 def _find_db_path() -> str:
     candidates = []
