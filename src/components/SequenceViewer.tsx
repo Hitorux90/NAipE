@@ -24,6 +24,10 @@ import {
   sanitizeNucleotides,
   isValidNucleotideKey,
 } from '../utils/sequenceUtils';
+import {
+  computeFragmentSpans,
+  findSpanForCutPosition,
+} from '../utils/restrictionUtils';
 
 /**
  * Robustly converts any color format (hex, rgb, named color) into a valid rgba(r,g,b,alpha) string.
@@ -236,14 +240,34 @@ export default function SequenceViewer({
   const [restrictionLoading, setRestrictionLoading] = useState(false);
   const [restrictionError, setRestrictionError] = useState<string | null>(null);
 
+  // R5: Lifted fragment span selection state for two-way gel <-> map linkage
+  const [selectedFragmentSpan, setSelectedFragmentSpan] = useState<{ start: number; end: number } | null>(null);
+
   useEffect(() => {
     runRestrictionDigest();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sequence?.sequence, sequence?.topology, restrictionSelectedEnzymes, restrictionDigestMode]);
 
+  // R5: Automatically clear selected fragment span if enzymes are cleared or span is no longer valid
+  useEffect(() => {
+    if (!selectedFragmentSpan) return;
+    if (restrictionSelectedEnzymes.length === 0 || !sequence) {
+      setSelectedFragmentSpan(null);
+      return;
+    }
+    const currentSpans = computeFragmentSpans(restrictionCuts, sequence.length_bp, sequence.topology);
+    const valid = currentSpans.some(
+      (s) => s.start === selectedFragmentSpan.start && s.end === selectedFragmentSpan.end
+    );
+    if (!valid) {
+      setSelectedFragmentSpan(null);
+    }
+  }, [restrictionCuts, restrictionSelectedEnzymes, sequence, selectedFragmentSpan]);
+
   async function runRestrictionDigest() {
     if (!sequence || restrictionSelectedEnzymes.length === 0 || !sequence.sequence) {
       setRestrictionCuts([]);
+      setSelectedFragmentSpan(null);
       return;
     }
     setRestrictionLoading(true);
@@ -263,10 +287,25 @@ export default function SequenceViewer({
     }
   }
 
-  // R4: cut-site marker click on Circular/Linear viewer jumps sequence view to that bp,
-  // reusing the same caretPos/selectedRange jump mechanism as feature clicks (handleFeatureClick).
+  // R4 + R5: cut-site marker click on Circular/Linear viewer:
+  // 1. (R5) Computes and sets selectedFragmentSpan so the matching gel band is emphasized (with toggle).
+  // 2. (R4) Jumps sequence view to that bp, reusing the same caretPos/selectedRange jump mechanism.
   function handleCutClick(cut: DigestCut) {
     if (!sequence) return;
+
+    // R5: map -> gel band highlight (with toggle support)
+    const spans = computeFragmentSpans(restrictionCuts, sequence.length_bp, sequence.topology);
+    const matchingSpan = findSpanForCutPosition(spans, cut.position, sequence.topology);
+    if (matchingSpan) {
+      setSelectedFragmentSpan((prev) => {
+        if (prev && prev.start === matchingSpan.start && prev.end === matchingSpan.end) {
+          return null; // toggle off
+        }
+        return { start: matchingSpan.start, end: matchingSpan.end };
+      });
+    }
+
+    // R4: jump to sequence text view at cut position
     const start = cut.position;
     const end = Math.min(sequence.length_bp, cut.position + Math.max(1, cut.site.length - 1));
     setSelectedFeatureId(null);
@@ -753,6 +792,7 @@ export default function SequenceViewer({
           restrictionCuts={restrictionCuts}
           restrictionSelectedEnzymes={restrictionSelectedEnzymes}
           onCutClick={handleCutClick}
+          selectedFragmentSpan={selectedFragmentSpan}
         />
       )}
       {viewMode === 'linear' && (
@@ -761,6 +801,7 @@ export default function SequenceViewer({
           restrictionCuts={restrictionCuts}
           restrictionSelectedEnzymes={restrictionSelectedEnzymes}
           onCutClick={handleCutClick}
+          selectedFragmentSpan={selectedFragmentSpan}
         />
       )}
       {viewMode === 'restriction' && (
@@ -773,6 +814,8 @@ export default function SequenceViewer({
           onDigestModeChange={setRestrictionDigestMode}
           loading={restrictionLoading}
           error={restrictionError}
+          selectedFragmentSpan={selectedFragmentSpan}
+          onFragmentClick={(span) => setSelectedFragmentSpan(span ? { start: span.start, end: span.end } : null)}
         />
       )}
       {viewMode === 'primer' && <PrimerDesigner sequence={sequence} />}

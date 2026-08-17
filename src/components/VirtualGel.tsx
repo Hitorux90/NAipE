@@ -1,22 +1,41 @@
+import { useState } from 'react';
 import { DigestCut } from '../src/contracts';
+import { computeFragmentSpans, FragmentSpan, isSpanSelected } from '../utils/restrictionUtils';
 
 interface Props {
   sequenceName: string;
   totalBp: number;
+  topology?: string;
   cuts: DigestCut[];
   selectedEnzymes: string[];
+  selectedFragmentSpan?: { start: number; end: number } | null;
+  onFragmentClick?: (span: { start: number; end: number; length: number; enzyme: string } | null) => void;
 }
 
 // Standard 1kb DNA Ladder bands (bp)
 const LADDER_BANDS = [10000, 8000, 6000, 5000, 4000, 3000, 2000, 1500, 1000, 500];
 
-export default function VirtualGel({ sequenceName, totalBp, cuts, selectedEnzymes }: Props) {
+export default function VirtualGel({
+  sequenceName,
+  totalBp,
+  topology = 'circular',
+  cuts,
+  selectedEnzymes,
+  selectedFragmentSpan,
+  onFragmentClick,
+}: Props) {
   const maxBp = 10000;
   const minBp = 100;
   const gelWidth = 320;
   const gelHeight = 360;
   const laneYTop = 50;
   const laneYBottom = 330;
+
+  const [hoveredSpan, setHoveredSpan] = useState<{
+    span: FragmentSpan;
+    sx: number;
+    sy: number;
+  } | null>(null);
 
   // Logarithmic migration distance formula for agarose gel electrophoresis
   const bpToY = (bp: number) => {
@@ -28,14 +47,24 @@ export default function VirtualGel({ sequenceName, totalBp, cuts, selectedEnzyme
     return laneYBottom - fraction * (laneYBottom - laneYTop);
   };
 
-  // Calculate fragment lengths from cuts
-  const fragmentLengths = cuts.map((c) => c.fragment_length);
-  if (cuts.length === 0 && selectedEnzymes.length > 0) {
-    fragmentLengths.push(totalBp); // Uncut circular/linear DNA
-  }
+  // Calculate derived fragment spans from cuts
+  const fragmentSpans: FragmentSpan[] = (cuts.length === 0 && selectedEnzymes.length > 0)
+    ? computeFragmentSpans([], totalBp, topology)
+    : (cuts.length > 0 ? computeFragmentSpans(cuts, totalBp, topology) : []);
 
   return (
-    <div className="virtual-gel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+    <div
+      className="virtual-gel"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '8px',
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+      }}
+    >
       <div style={{ textAlign: 'center', width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
         <h4 style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-secondary)' }}>
           Virtual Agarose Gel Simulator (1% Agarose)
@@ -83,11 +112,11 @@ export default function VirtualGel({ sequenceName, totalBp, cuts, selectedEnzyme
           Digest Sample
         </text>
 
-        {/* Lane 1: 1kb Ladder Bands */}
+        {/* Lane 1: 1kb Ladder Bands (Non-interactive) */}
         {LADDER_BANDS.map((bp) => {
           const y = bpToY(bp);
           return (
-            <g key={`ladder-${bp}`}>
+            <g key={`ladder-${bp}`} pointerEvents="none">
               {/* Fluorescent EtBr/GelRed DNA Band */}
               <line
                 x1="35"
@@ -107,28 +136,106 @@ export default function VirtualGel({ sequenceName, totalBp, cuts, selectedEnzyme
           );
         })}
 
-        {/* Lane 2: Digest Sample Bands */}
-        {fragmentLengths.map((fragLen, idx) => {
-          const y = bpToY(fragLen);
+        {/* Lane 2: Digest Sample Bands (Interactive: hover & click) */}
+        {fragmentSpans.map((span, idx) => {
+          const y = bpToY(span.length);
+          const isSelected = isSpanSelected(span, selectedFragmentSpan);
+          const isHovered = hoveredSpan?.span.index === span.index;
+
           return (
-            <g key={`frag-${idx}-${fragLen}`}>
+            <g
+              key={`frag-${idx}-${span.start}-${span.end}-${span.length}`}
+              style={{ cursor: 'pointer' }}
+              onClick={() => {
+                if (isSelected) {
+                  onFragmentClick?.(null);
+                } else {
+                  onFragmentClick?.({
+                    start: span.start,
+                    end: span.end,
+                    length: span.length,
+                    enzyme: span.enzyme,
+                  });
+                }
+              }}
+              onMouseEnter={(e) => setHoveredSpan({ span, sx: e.clientX, sy: e.clientY })}
+              onMouseMove={(e) => setHoveredSpan({ span, sx: e.clientX, sy: e.clientY })}
+              onMouseLeave={() => setHoveredSpan(null)}
+            >
+              {/* Invisible wider hit area for easy clicking */}
+              <line
+                x1="150"
+                y1={y}
+                x2="245"
+                y2={y}
+                stroke="transparent"
+                strokeWidth="14"
+              />
+              {/* Visible fluorescent band with selection emphasis */}
               <line
                 x1="155"
                 y1={y}
                 x2="240"
                 y2={y}
-                stroke="#38BDF8" // Bright cyan fluorescent glow
-                strokeWidth="4"
+                stroke={isSelected ? '#FFFFFF' : (isHovered ? '#7DD3FC' : '#38BDF8')}
+                strokeWidth={isSelected ? '6' : (isHovered ? '5' : '4')}
                 strokeLinecap="round"
-                style={{ filter: 'drop-shadow(0 0 5px #0EA5E9)' }}
+                style={{
+                  filter: isSelected
+                    ? 'drop-shadow(0 0 8px #38BDF8) drop-shadow(0 0 2px #FFFFFF)'
+                    : (isHovered ? 'drop-shadow(0 0 6px #0EA5E9)' : 'drop-shadow(0 0 4px #0EA5E9)'),
+                  transition: 'stroke 0.15s ease, stroke-width 0.15s ease',
+                }}
               />
-              <text x="246" y={y + 3} textAnchor="start" fill="#F1F5F9" fontSize="10" fontFamily="monospace" fontWeight="600">
-                {fragLen} bp
+              <text
+                x="246"
+                y={y + 3}
+                textAnchor="start"
+                fill={isSelected ? '#38BDF8' : '#F1F5F9'}
+                fontSize="10"
+                fontFamily="monospace"
+                fontWeight={isSelected ? '700' : '600'}
+              >
+                {span.length.toLocaleString()} bp
               </text>
             </g>
           );
         })}
       </svg>
+
+      {/* Hover tooltip for fragment details */}
+      {hoveredSpan && (
+        <div
+          className="virtual-gel-tooltip"
+          style={{
+            position: 'fixed',
+            left: hoveredSpan.sx + 12,
+            top: hoveredSpan.sy + 12,
+            zIndex: 1000,
+            pointerEvents: 'none',
+            background: 'var(--color-bg-secondary, #1E293B)',
+            color: 'var(--color-text-primary, #F9FAFB)',
+            border: '1px solid var(--color-border-subtle, #334155)',
+            borderRadius: '4px',
+            padding: '4px 8px',
+            fontSize: '11px',
+            whiteSpace: 'nowrap',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+          }}
+        >
+          <strong>{hoveredSpan.span.enzyme !== 'Uncut' ? `${hoveredSpan.span.enzyme} fragment` : 'Uncut DNA'}</strong>:{' '}
+          {hoveredSpan.span.length.toLocaleString()} bp
+          <div style={{ fontSize: '10px', color: 'var(--color-text-secondary, #94A3B8)' }}>
+            {hoveredSpan.span.enzyme === 'Uncut'
+              ? `Full sequence (1–${totalBp} bp)`
+              : hoveredSpan.span.isWrapped && hoveredSpan.span.start === hoveredSpan.span.end
+              ? `Full circular plasmid (${hoveredSpan.span.start} bp cut)`
+              : hoveredSpan.span.isWrapped
+              ? `Positions ${hoveredSpan.span.start}–${totalBp} & 1–${hoveredSpan.span.end}`
+              : `Positions ${hoveredSpan.span.start}–${hoveredSpan.span.end}`}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
