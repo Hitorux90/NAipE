@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Dna, FileText, BookOpen } from 'lucide-react';
-import { SequenceState, Annotation } from '../src/contracts';
+import { SequenceState, Annotation, DigestCut } from '../src/contracts';
 export type Sequence = SequenceState; // convenience re-export
 import CircularViewer from './CircularViewer';
 import LinearViewer from './LinearViewer';
@@ -223,6 +223,64 @@ export default function SequenceViewer({
   const [selectedRange, setSelectedRange] = useState<{ start: number; end: number } | null>(null);
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const [lineBp, setLineBp] = useState<number>(60); // Dynamic bases per line
+
+  // R4: Restriction selection/digest state lifted out of RestrictionMapper so it
+  // survives viewMode switches and can be rendered as an overlay on the viewers.
+  const [restrictionSelectedEnzymes, setRestrictionSelectedEnzymes] = useState<string[]>([
+    'EcoRI',
+    'NdeI',
+    'PstI',
+  ]);
+  const [restrictionCuts, setRestrictionCuts] = useState<DigestCut[]>([]);
+  const [restrictionDigestMode, setRestrictionDigestMode] = useState<'combined' | 'single'>('combined');
+  const [restrictionLoading, setRestrictionLoading] = useState(false);
+  const [restrictionError, setRestrictionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    runRestrictionDigest();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sequence?.sequence, sequence?.topology, restrictionSelectedEnzymes, restrictionDigestMode]);
+
+  async function runRestrictionDigest() {
+    if (!sequence || restrictionSelectedEnzymes.length === 0 || !sequence.sequence) {
+      setRestrictionCuts([]);
+      return;
+    }
+    setRestrictionLoading(true);
+    setRestrictionError(null);
+    try {
+      const res = await invoke<any>('digest_sequence', {
+        sequence: sequence.sequence,
+        topology: sequence.topology,
+        enzymes: restrictionSelectedEnzymes,
+        mode: restrictionDigestMode,
+      });
+      setRestrictionCuts(res.cuts || []);
+    } catch (err: any) {
+      setRestrictionError(err?.message_user || err?.message || 'Digest failed');
+    } finally {
+      setRestrictionLoading(false);
+    }
+  }
+
+  // R4: cut-site marker click on Circular/Linear viewer jumps sequence view to that bp,
+  // reusing the same caretPos/selectedRange jump mechanism as feature clicks (handleFeatureClick).
+  function handleCutClick(cut: DigestCut) {
+    if (!sequence) return;
+    const start = cut.position;
+    const end = Math.min(sequence.length_bp, cut.position + Math.max(1, cut.site.length - 1));
+    setSelectedFeatureId(null);
+    setSelectedRange({ start, end });
+    setCaretPos(start);
+    setViewMode('text');
+    setTimeout(() => {
+      const lineIndex = Math.floor((start - 1) / lineBp);
+      const targetEl = document.getElementById(`seq-line-${lineIndex}`);
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 0);
+  }
 
   const windowContainerRef = useRef<HTMLDivElement | null>(null);
   const linesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -689,9 +747,34 @@ export default function SequenceViewer({
       </p>
 
       {/* Viewers */}
-      {viewMode === 'circular' && <CircularViewer sequence={sequence} />}
-      {viewMode === 'linear' && <LinearViewer sequence={sequence} />}
-      {viewMode === 'restriction' && <RestrictionMapper sequence={sequence} />}
+      {viewMode === 'circular' && (
+        <CircularViewer
+          sequence={sequence}
+          restrictionCuts={restrictionCuts}
+          restrictionSelectedEnzymes={restrictionSelectedEnzymes}
+          onCutClick={handleCutClick}
+        />
+      )}
+      {viewMode === 'linear' && (
+        <LinearViewer
+          sequence={sequence}
+          restrictionCuts={restrictionCuts}
+          restrictionSelectedEnzymes={restrictionSelectedEnzymes}
+          onCutClick={handleCutClick}
+        />
+      )}
+      {viewMode === 'restriction' && (
+        <RestrictionMapper
+          sequence={sequence}
+          selectedEnzymes={restrictionSelectedEnzymes}
+          onSelectedEnzymesChange={setRestrictionSelectedEnzymes}
+          cuts={restrictionCuts}
+          digestMode={restrictionDigestMode}
+          onDigestModeChange={setRestrictionDigestMode}
+          loading={restrictionLoading}
+          error={restrictionError}
+        />
+      )}
       {viewMode === 'primer' && <PrimerDesigner sequence={sequence} />}
       {viewMode === 'orf' && <OrfFinder sequence={sequence} />}
       {viewMode === 'align' && <SequenceAligner sequence={sequence} />}

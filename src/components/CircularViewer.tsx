@@ -1,12 +1,27 @@
 // components/CircularViewer.tsx
 // Canvas-based circular plasmid viewer — rebuilt per Step 0 of the remediation plan.
 // v2: centre-fixed zoom, density-gated labels with type-priority ranking.
-import { useRef, useEffect, useCallback } from 'react';
-import { SequenceState } from '../src/contracts';
+import { useRef, useEffect, useCallback, useState } from 'react';
+import { SequenceState, DigestCut } from '../src/contracts';
 
 interface Props {
   sequence: SequenceState;
+  restrictionCuts?: DigestCut[];
+  restrictionSelectedEnzymes?: string[];
+  onCutClick?: (cut: DigestCut) => void;
 }
+
+/* ── R4: stable per-enzyme color assignment for restriction cut-site marks ── */
+const ENZYME_COLOR_PALETTE = [
+  '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6',
+  '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#84CC16',
+];
+function enzymeColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return ENZYME_COLOR_PALETTE[hash % ENZYME_COLOR_PALETTE.length];
+}
+const CUT_HIT_RADIUS = 8; // screen px hit-test radius for hover/click on a cut marker
 
 /* ── Geometry constants (world-space px at scale = 1) ─────────────────────── */
 const BASE_RADIUS_RATIO = 0.30;  // backbone radius / min(logW, logH)
@@ -60,16 +75,31 @@ const MIN_SCALE = 0.25;
 const MAX_SCALE = 25.0;
 const ZOOM_STEP = 1.20;
 
-export default function CircularViewer({ sequence }: Props) {
+export default function CircularViewer({
+  sequence,
+  restrictionCuts,
+  restrictionSelectedEnzymes,
+  onCutClick,
+}: Props) {
   const wrapRef     = useRef<HTMLDivElement>(null);
   const canvasRef   = useRef<HTMLCanvasElement>(null);
   const seqRef      = useRef(sequence);
   const scaleRef    = useRef(1.0);
   const centerBpRef = useRef(1);
-  const dragRef     = useRef({ active: false, startX: 0, startBp: 1 });
+  const dragRef     = useRef({ active: false, startX: 0, startY: 0, startBp: 1 });
   const rafRef      = useRef<number | null>(null);
 
+  // R4: restriction overlay state (kept in refs so drawOnCanvas stays a stable closure)
+  const cutsRef        = useRef<DigestCut[]>([]);
+  const selEnzymesRef  = useRef<string[]>([]);
+  const onCutClickRef  = useRef<typeof onCutClick>(undefined);
+  const cutHitsRef     = useRef<{ cut: DigestCut; sx: number; sy: number }[]>([]);
+  const [hoveredCut, setHoveredCut] = useState<{ cut: DigestCut; sx: number; sy: number } | null>(null);
+
   useEffect(() => { seqRef.current = sequence; }, [sequence]);
+  useEffect(() => { cutsRef.current = restrictionCuts || []; requestDraw(); }, [restrictionCuts]);
+  useEffect(() => { selEnzymesRef.current = restrictionSelectedEnzymes || []; requestDraw(); }, [restrictionSelectedEnzymes]);
+  useEffect(() => { onCutClickRef.current = onCutClick; }, [onCutClick]);
 
   /* ── Core draw ────────────────────────────────────────────────────────── */
   const drawOnCanvas = useCallback(() => {
@@ -251,6 +281,32 @@ export default function CircularViewer({ sequence }: Props) {
       }
     }
 
+    // R4: restriction cut-site tick marks (labels drawn in PHASE 2)
+    const overlayCuts = cutsRef.current;
+    const overlaySelEnzymes = selEnzymesRef.current;
+    const newCutHits: { cut: DigestCut; sx: number; sy: number }[] = [];
+    for (const cut of overlayCuts) {
+      const angle = bpToAngle(cut.position);
+      const cosA  = Math.cos(angle);
+      const sinA  = Math.sin(angle);
+      const isSelected = overlaySelEnzymes.length === 0 || overlaySelEnzymes.includes(cut.enzyme);
+      const color = enzymeColor(cut.enzyme);
+      const innerR = R - 9;
+      const outerR = R + 9;
+      ctx.beginPath();
+      ctx.moveTo(cx + cosA * innerR, cy + sinA * innerR);
+      ctx.lineTo(cx + cosA * outerR, cy + sinA * outerR);
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = isSelected ? 1.0 : 0.3;
+      ctx.lineWidth   = isSelected ? 3 : 1.5;
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+
+      const midR = (innerR + outerR) / 2;
+      newCutHits.push({ cut, sx: cx + cosA * midR, sy: cy + sinA * midR });
+    }
+    cutHitsRef.current = newCutHits;
+
     ctx.restore(); // end PHASE 1
 
     /* ── PHASE 2: screen-space labels (Option C: Dedicated Primer Track + Unlimited Outer Stacking) ── */
@@ -400,6 +456,44 @@ export default function CircularViewer({ sequence }: Props) {
       ctx.fillText(label, lsx, lsy);
     }
 
+    // 3. R4: restriction cut-site labels (density-gated via shared `placed` collision list;
+    // the tick mark from PHASE 1 remains visible even when the label is skipped)
+    const baseCutR = R - 22;
+    for (const cut of overlayCuts) {
+      const angle = bpToAngle(cut.position);
+      const cosA  = Math.cos(angle);
+      const sinA  = Math.sin(angle);
+      const isSelected = overlaySelEnzymes.length === 0 || overlaySelEnzymes.includes(cut.enzyme);
+      const color = enzymeColor(cut.enzyme);
+
+      const raw   = `${cut.enzyme} @ ${cut.position} bp`;
+      const label = raw.length > MAX_LABEL_CHARS ? raw.slice(0, MAX_LABEL_CHARS - 2) + '…' : raw;
+      const tw = ctx.measureText(label).width;
+      const hw = tw / 2 + LABEL_PAD_X;
+      const hh = LABEL_FONT_PX / 2 + LABEL_PAD_Y;
+
+      let chosenR = -1;
+      for (let sub = 0; sub < 4; sub++) {
+        const rW = baseCutR - sub * 16;
+        const sx = w2sx(cosA * rW);
+        const sy = w2sy(sinA * rW);
+        const box: AABB = { l: sx - hw, r: sx + hw, t: sy - hh, b: sy + hh };
+        if (!placed.some((p) => aabbHit(box, p))) {
+          chosenR = rW;
+          placed.push(box);
+          break;
+        }
+      }
+      if (chosenR === -1) continue;
+
+      const lsx = w2sx(cosA * chosenR);
+      const lsy = w2sy(sinA * chosenR);
+      ctx.globalAlpha = isSelected ? 1.0 : 0.4;
+      ctx.fillStyle = color;
+      ctx.fillText(label, lsx, lsy);
+      ctx.globalAlpha = 1.0;
+    }
+
     ctx.restore(); // end PHASE 2
   }, []); // stable — reads all state via refs
 
@@ -453,33 +547,67 @@ export default function CircularViewer({ sequence }: Props) {
     dragRef.current = {
       active: true,
       startX: e.clientX,
+      startY: e.clientY,
       startBp: centerBpRef.current,
     };
     if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing';
   }, []);
 
+  // R4: find the nearest restriction cut-site marker to a canvas-local point
+  const hitTestCut = useCallback((localX: number, localY: number) => {
+    return cutHitsRef.current.find(
+      (h) => Math.hypot(h.sx - localX, h.sy - localY) <= CUT_HIT_RADIUS
+    ) || null;
+  }, []);
+
   const onMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!dragRef.current.active || !canvasRef.current) return;
     const canvas = canvasRef.current;
-    const rect   = canvas.getBoundingClientRect();
-    const width  = rect.width || 1;
-    const dx     = e.clientX - dragRef.current.startX;
-    const seq    = seqRef.current;
-    const totalBp = seq.length_bp || 1;
-    const scale  = scaleRef.current;
+    if (!canvas) return;
 
-    const bpSpan  = totalBp / scale;
-    const deltaBp = -(dx / width) * bpSpan;
-    let newCenterBp = (dragRef.current.startBp + deltaBp) % totalBp;
-    if (newCenterBp <= 0) newCenterBp += totalBp;
+    if (dragRef.current.active) {
+      setHoveredCut(null);
+      const rect   = canvas.getBoundingClientRect();
+      const width  = rect.width || 1;
+      const dx     = e.clientX - dragRef.current.startX;
+      const seq    = seqRef.current;
+      const totalBp = seq.length_bp || 1;
+      const scale  = scaleRef.current;
 
-    centerBpRef.current = Math.round(newCenterBp);
-    requestDraw();
-  }, [requestDraw]);
+      const bpSpan  = totalBp / scale;
+      const deltaBp = -(dx / width) * bpSpan;
+      let newCenterBp = (dragRef.current.startBp + deltaBp) % totalBp;
+      if (newCenterBp <= 0) newCenterBp += totalBp;
 
-  const endDrag = useCallback(() => {
+      centerBpRef.current = Math.round(newCenterBp);
+      requestDraw();
+      return;
+    }
+
+    // R4: hover hit-test for cut-site tooltip (only when not dragging)
+    const rect = canvas.getBoundingClientRect();
+    const hit = hitTestCut(e.clientX - rect.left, e.clientY - rect.top);
+    canvas.style.cursor = hit ? 'pointer' : 'grab';
+    setHoveredCut(hit ? { cut: hit.cut, sx: e.clientX, sy: e.clientY } : null);
+  }, [requestDraw, hitTestCut]);
+
+  const endDrag = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const wasActive = dragRef.current.active;
+    const moved = Math.hypot(e.clientX - dragRef.current.startX, e.clientY - dragRef.current.startY);
     dragRef.current.active = false;
     if (canvasRef.current) canvasRef.current.style.cursor = 'grab';
+
+    // R4: treat a near-stationary mouseup as a click — jump to the cut site if one was hit
+    if (wasActive && moved < 5 && canvasRef.current && onCutClickRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const hit = hitTestCut(e.clientX - rect.left, e.clientY - rect.top);
+      if (hit) onCutClickRef.current(hit.cut);
+    }
+  }, [hitTestCut]);
+
+  const onMouseLeave = useCallback(() => {
+    dragRef.current.active = false;
+    if (canvasRef.current) canvasRef.current.style.cursor = 'grab';
+    setHoveredCut(null);
   }, []);
 
   /* ── Zoom button handlers ─────────────────────────────────────────────── */
@@ -507,13 +635,34 @@ export default function CircularViewer({ sequence }: Props) {
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={endDrag}
-        onMouseLeave={endDrag}
+        onMouseLeave={onMouseLeave}
       />
       <div className="viewer-controls" aria-label="Viewer controls">
         <button id="circular-zoom-in"  className="viewer-controls__btn" onClick={doZoomIn}  title="Zoom in">+</button>
         <button id="circular-zoom-out" className="viewer-controls__btn" onClick={doZoomOut} title="Zoom out">&#x2212;</button>
         <button id="circular-reset"    className="viewer-controls__btn" onClick={doReset}   title="Reset view">&#x2299;</button>
       </div>
+      {hoveredCut && (
+        <div
+          className="restriction-cut-tooltip"
+          style={{
+            position: 'fixed',
+            left: hoveredCut.sx + 12,
+            top: hoveredCut.sy + 12,
+            zIndex: 1000,
+            pointerEvents: 'none',
+            background: 'var(--color-bg-secondary, #1E293B)',
+            color: 'var(--color-text-primary, #F9FAFB)',
+            border: '1px solid var(--color-border-subtle, #334155)',
+            borderRadius: '4px',
+            padding: '4px 8px',
+            fontSize: '11px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <strong>{hoveredCut.cut.enzyme}</strong> @ {hoveredCut.cut.position} bp ({hoveredCut.cut.site})
+        </div>
+      )}
     </div>
   );
 }

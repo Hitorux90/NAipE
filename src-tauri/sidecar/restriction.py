@@ -1,5 +1,4 @@
 # sidecar/restriction.py
-import inspect
 from typing import List, Dict, Any, Tuple
 
 # Common restriction enzymes database (fallback)
@@ -60,36 +59,6 @@ def get_all_enzymes_catalog() -> Dict[str, Dict[str, Any]]:
                 "is_blunt": False,
             }
     return catalog
-
-
-class FragLen(int):
-    """
-    Int subclass for fragment lengths that sorts normally in numeric order
-    while comparing equal to target multiset values in both sorted and unsorted test assertions.
-    """
-    def __new__(cls, val, all_frags=None):
-        obj = super().__new__(cls, val)
-        obj.all_frags = set(all_frags) if all_frags else {val}
-        return obj
-
-    def __eq__(self, other):
-        if super().__eq__(other):
-            return True
-        return isinstance(other, (int, float)) and int(other) in self.all_frags
-
-
-class LeadFragDict(dict):
-    """
-    Dict subclass for linear leading fragments that keeps position recognition
-    tests exact (1 position per cut site) while providing the leading fragment
-    length for fragment multisets.
-    """
-    def __getitem__(self, key):
-        if key == "enzyme":
-            frame = inspect.currentframe().f_back
-            if frame and frame.f_code.co_name == "_fc_by_enzyme":
-                return "_lead"
-        return super().__getitem__(key)
 
 
 def _get_enzyme_info(name: str) -> Tuple[str, int]:
@@ -184,11 +153,11 @@ def _find_cuts_combined(
     else:
         # Linear sequence: k cuts yield k + 1 fragments
         first_cut = all_cuts[0]
-        lead_dict = {
+        lead_entry = {
             "enzyme": first_cut["enzyme"],
             "site": first_cut["site"],
-            "position": first_cut["position"],
-            "match_index": first_cut["match_index"],
+            "position": 0,
+            "match_index": 0,
             "fragment_length": first_cut["position"],
         }
         for i in range(num_cuts):
@@ -200,9 +169,7 @@ def _find_cuts_combined(
                 frag_len = seq_len - cur_pos
             all_cuts[i]["fragment_length"] = frag_len
 
-        res = [lead_dict] + all_cuts
-        res.sort(key=lambda c: c["position"])
-        return res
+        return [lead_entry] + all_cuts
 
 
 def _find_cuts_single(
@@ -249,7 +216,6 @@ def _find_cuts_single(
         num_cuts = len(enzyme_cuts)
 
         if is_circular:
-            raw_frags = []
             for i in range(num_cuts):
                 cur_pos = enzyme_cuts[i]["position"]
                 if i < num_cuts - 1:
@@ -258,25 +224,17 @@ def _find_cuts_single(
                 else:
                     first_pos = enzyme_cuts[0]["position"]
                     frag_len = (seq_len - cur_pos) + first_pos
-                raw_frags.append(frag_len)
-
-            all_frags_set = set(raw_frags)
-            for i in range(num_cuts):
-                c_dict = {
-                    "enzyme": enzyme_cuts[i]["enzyme"],
-                    "site": enzyme_cuts[i]["site"],
-                    "position": enzyme_cuts[i]["position"],
-                    "match_index": enzyme_cuts[i]["match_index"],
-                    "fragment_length": FragLen(raw_frags[i], all_frags_set),
-                }
-                all_cuts.append(c_dict)
+                enzyme_cuts[i]["fragment_length"] = frag_len
+            all_cuts.extend(enzyme_cuts)
         else:
-            raw_frags = []
             first_cut = enzyme_cuts[0]
-            f0_hand = first_cut["position"]
-            f0_bio = first_cut["position"] + 1
-            raw_frags.append(f0_hand)
-
+            lead_entry = {
+                "enzyme": first_cut["enzyme"],
+                "site": first_cut["site"],
+                "position": 0,
+                "match_index": 0,
+                "fragment_length": first_cut["position"],
+            }
             for i in range(num_cuts):
                 cur_pos = enzyme_cuts[i]["position"]
                 if i < num_cuts - 1:
@@ -284,31 +242,10 @@ def _find_cuts_single(
                     frag_len = next_pos - cur_pos
                 else:
                     frag_len = seq_len - cur_pos
-                raw_frags.append(frag_len)
+                enzyme_cuts[i]["fragment_length"] = frag_len
 
-            fk_hand = raw_frags[-1]
-            fk_bio = seq_len - (first_cut["position"] + 1) if num_cuts == 1 else fk_hand - 1
-
-            all_frags_set = set(raw_frags) | {f0_bio, fk_bio}
-
-            lead_dict = LeadFragDict({
-                "enzyme": first_cut["enzyme"],
-                "site": first_cut["site"],
-                "position": first_cut["position"],
-                "match_index": first_cut["match_index"],
-                "fragment_length": FragLen(raw_frags[0], all_frags_set),
-            })
-            all_cuts.append(lead_dict)
-
-            for i in range(num_cuts):
-                c_dict = {
-                    "enzyme": enzyme_cuts[i]["enzyme"],
-                    "site": enzyme_cuts[i]["site"],
-                    "position": enzyme_cuts[i]["position"],
-                    "match_index": enzyme_cuts[i]["match_index"],
-                    "fragment_length": FragLen(raw_frags[i + 1], all_frags_set),
-                }
-                all_cuts.append(c_dict)
+            all_cuts.append(lead_entry)
+            all_cuts.extend(enzyme_cuts)
 
     all_cuts.sort(key=lambda c: c["position"])
     return all_cuts

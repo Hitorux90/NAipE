@@ -5,32 +5,26 @@ remediation plan).
 WHY THIS TEST EXISTS
 -------------------
 The remediation plan (19_Executive_Report_Remediation_Plan.md) was created
-because the existing suites verified *wiring*, not *quality*: every tool passed
+because prior test suites verified *wiring*, not *quality*: every tool passed
 its integration test while the underlying biology was wrong. This test is the
-quality gate for Step 1. It asserts correct restriction-digest biology, derived
-from TWO independent sources that do NOT share code with sidecar/restriction.py:
+honest quality gate for Step 1. It asserts correct restriction-digest biology,
+derived from TWO independent sources that do NOT share code with sidecar/restriction.py:
 
   1. Biopython's `Bio.Restriction` (a completely separate, mature implementation)
-     used as an oracle for cut-site recognition and single-enzyme fragment sets.
+     used as an oracle for cut-site recognition and fragment sets.
   2. Hand-computed tiny sequences with fully transparent expected values.
 
 CONVENTION NOTE
 ---------------
-sidecar/restriction.py reports a cut `position` that is exactly 1 less than
-Biopython's reported cut position for the same site (find_cuts cuts at the base
-5' of the recognition site start, 1-based). Because fragment *lengths* are
-convention-independent, fragment-length multisets are the robust oracle; cut
-*positions* are checked via the uniform +1 mapping.
-
-EXPECTED STATE
---------------
-This test is RED on the current find_cuts() implementation. That is intended:
-it documents the correct behaviour the Step-1 fix must achieve. When it goes
-green, Step 1's enzyme math is validated against ground truth.
+sidecar/restriction.py reports cut `position` for real cut sites as exactly 1 less
+than Biopython's reported cut position for the same site (find_cuts cuts at the base
+5' of the recognition site start, 1-based).
+For linear digests, an entry at position 0 represents the leading fragment
+(5' origin to first cut site).
 """
 import os
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 import pytest
 
@@ -66,15 +60,6 @@ def _load_plasmid(filename):
     return seq, topo
 
 
-def _fc_by_enzyme(seq, topo, enzymes):
-    """find_cuts grouped by enzyme -> {enzyme: [position, ...]}."""
-    cuts = find_cuts(seq, topo, enzymes)
-    by = defaultdict(list)
-    for c in cuts:
-        by[c["enzyme"]].append(c["position"])
-    return by
-
-
 def _bio_search(seq, topo, enzymes):
     """Biopython cut positions grouped by enzyme -> {enzyme: [position, ...]}."""
     s = Seq(seq)
@@ -91,10 +76,13 @@ def _bio_search(seq, topo, enzymes):
 
 
 def _expected_frag_lengths(positions, seq_len, circular):
-    """Convention-free fragment-length multiset for a single enzyme's cuts."""
+    """
+    Convention-free fragment-length list from 1-based cleavage positions (base 5' of cut).
+    Positions are sorted 1-based integers in the range [1, seq_len].
+    """
     pl = sorted(positions)
     if not pl:
-        return []
+        return [seq_len] if seq_len > 0 else []
     if circular:
         frags = []
         n = len(pl)
@@ -112,8 +100,35 @@ def _expected_frag_lengths(positions, seq_len, circular):
     return sorted(frags)
 
 
-def _fc_frag_lengths(cuts):
-    return sorted(c["fragment_length"] for c in cuts)
+def _compute_bio_combined_expected(seq, topo, enzymes):
+    """Compute Biopython combined cut positions (find_cuts convention: bio - 1) and expected fragment lengths."""
+    s = Seq(seq)
+    seq_len = len(seq)
+    is_circular = topo.lower() == "circular"
+    linear = not is_circular
+    all_bio_positions = set()
+    for name in enzymes:
+        enz = getattr(R, name, None)
+        if enz is not None:
+            all_bio_positions.update(enz.search(s, linear=linear))
+
+    if not all_bio_positions:
+        return [], [seq_len]
+
+    sorted_bio = sorted(all_bio_positions)
+    expected_fc_cut_positions = [p - 1 for p in sorted_bio]
+    expected_frags = _expected_frag_lengths(expected_fc_cut_positions, seq_len, is_circular)
+    return expected_fc_cut_positions, expected_frags
+
+
+def _assert_plain_types(cuts):
+    """Assert that returned cut entries and fragment lengths are strictly plain Python dict and int."""
+    for c in cuts:
+        assert type(c) is dict, f"Cut entry must be a plain dict, got {type(c)}"
+        assert "fragment_length" in c, "Cut entry missing 'fragment_length'"
+        assert type(c["fragment_length"]) is int, (
+            f"fragment_length must be a plain int, got {type(c['fragment_length'])}: {c['fragment_length']!r}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -124,16 +139,22 @@ def test_recognition_matches_biopython(filename):
     seq, topo = _load_plasmid(filename)
     enzymes = list(RESTRICTION_ENZYMES.keys())
 
-    fc = _fc_by_enzyme(seq, topo, enzymes)
+    all_cuts = find_cuts(seq, topo, enzymes, mode="single")
+    _assert_plain_types(all_cuts)
+
+    # Group find_cuts real cut sites (position > 0, excluding pos 0 leading fragment) by enzyme
+    fc_by = defaultdict(list)
+    for c in all_cuts:
+        if c["position"] > 0:
+            fc_by[c["enzyme"]].append(c["position"])
+
     bio = _bio_search(seq, topo, enzymes)
 
     if not bio:
-        pytest.skip(f"{filename}: none of the supported enzymes cut this sequence "
-                    f"(no ground-truth sites to compare against)")
+        pytest.skip(f"{filename}: none of the supported enzymes cut this sequence")
 
-    # Only compare enzymes where Biopython actually found a cut site.
     for name in sorted(bio):
-        fc_pos = sorted(fc.get(name, []))
+        fc_pos = sorted(set(fc_by.get(name, [])))
         bio_pos = sorted(bio.get(name, []))
         # find_cuts position is exactly Biopython position - 1
         assert bio_pos == [p + 1 for p in fc_pos], (
@@ -143,86 +164,190 @@ def test_recognition_matches_biopython(filename):
 
 
 # ---------------------------------------------------------------------------
-# 2. FRAGMENT SETS: single-enzyme fragment lengths match Biopython oracle
-#    (catches missing end-fragments on linear digests and cross-enzyme mixing)
+# 2. FRAGMENT SETS (Single Mode): single-enzyme fragment lengths match Biopython
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize("filename", PLASMID_FILES)
 def test_single_enzyme_fragments_match_biopython(filename):
     seq, topo = _load_plasmid(filename)
     seq_len = len(seq)
+    is_circular = topo.lower() == "circular"
     enzymes = list(RESTRICTION_ENZYMES.keys())
 
-    # Run find_cuts once for all enzymes, then look at each enzyme in isolation.
-    all_cuts = find_cuts(seq, topo, enzymes)
+    all_cuts = find_cuts(seq, topo, enzymes, mode="single")
+    _assert_plain_types(all_cuts)
+
     fc_by = defaultdict(list)
     for c in all_cuts:
         fc_by[c["enzyme"]].append(c)
 
     bio = _bio_search(seq, topo, enzymes)
 
-    for name in bio:  # only enzymes Biopython actually cuts
-        fc_frags = _fc_frag_lengths(fc_by.get(name, []))
-        expected = _expected_frag_lengths(bio[name], seq_len, topo == "circular")
-        assert fc_frags == expected, (
-            f"{filename}: {name} fragment lengths wrong. "
-            f"find_cuts={fc_frags} expected={expected}"
+    for name in bio:
+        enz_cuts = fc_by.get(name, [])
+        positions = [c["position"] for c in enz_cuts]
+        fc_frags = [c["fragment_length"] for c in enz_cuts]
+        expected_cuts_fc = [p - 1 for p in bio[name]]
+        expected_frags = _expected_frag_lengths(expected_cuts_fc, seq_len, is_circular)
+
+        # Multiset comparison using Counter
+        assert Counter(fc_frags) == Counter(expected_frags), (
+            f"{filename}: {name} fragment length multiset mismatch. "
+            f"find_cuts={sorted(fc_frags)} expected={sorted(expected_frags)}"
+        )
+
+        # Position structure check:
+        # For linear: exactly [0, p1, p2, ...] with no duplicates
+        # For circular: exactly [p1, p2, ...] with no duplicates
+        if is_circular:
+            assert positions == expected_cuts_fc, (
+                f"{filename}: {name} circular cut positions mismatch: got {positions}, expected {expected_cuts_fc}"
+            )
+        else:
+            assert positions == [0] + expected_cuts_fc, (
+                f"{filename}: {name} linear cut positions mismatch: got {positions}, expected {[0] + expected_cuts_fc}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# 3. COMBINED DIGEST ON PLASMIDS: multi-enzyme combined digest matches Biopython
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("filename", PLASMID_FILES)
+def test_combined_fragments_match_biopython(filename):
+    seq, topo = _load_plasmid(filename)
+    is_circular = topo.lower() == "circular"
+    enzymes = list(RESTRICTION_ENZYMES.keys())
+
+    cuts = find_cuts(seq, topo, enzymes, mode="combined")
+    _assert_plain_types(cuts)
+
+    expected_cut_pos, expected_frags = _compute_bio_combined_expected(seq, topo, enzymes)
+
+    if not expected_cut_pos:
+        pytest.skip(f"{filename}: no enzymes cut this sequence in combined mode")
+
+    actual_positions = [c["position"] for c in cuts]
+    actual_frags = [c["fragment_length"] for c in cuts]
+
+    # Multiset comparison of fragment lengths
+    assert Counter(actual_frags) == Counter(expected_frags), (
+        f"{filename} combined fragment mismatch: got {sorted(actual_frags)}, expected {sorted(expected_frags)}"
+    )
+
+    # Position checks (verifying no duplicate positions):
+    if is_circular:
+        assert actual_positions == expected_cut_pos, (
+            f"{filename} circular combined positions mismatch: got {actual_positions}, expected {expected_cut_pos}"
+        )
+    else:
+        assert actual_positions == [0] + expected_cut_pos, (
+            f"{filename} linear combined positions mismatch: got {actual_positions}, expected {[0] + expected_cut_pos}"
         )
 
 
 # ---------------------------------------------------------------------------
-# 3. HAND-COMPUTED: linear multi-cut yields correct fragment list (incl. ends)
-#    GAATTCGAATTC, EcoRI at 0-based 0 and 6 -> cut positions 1 and 7 (find_cuts conv).
-#    Linear fragments: [1, 6, 5]  (NOT [6, 5] with the leading fragment dropped).
+# 4. HAND-COMPUTED: linear multi-cut yields [1, 6, 5] at positions [0, 1, 7]
+#    GAATTCGAATTC (len 12), EcoRI cuts at 0-based 0, 6 -> cut positions 1 and 7.
 # ---------------------------------------------------------------------------
 def test_linear_multi_cut_fragments_hand_computed():
     seq = "GAATTCGAATTC"
-    cuts = find_cuts(seq, "linear", ["EcoRI"])
-    frags = _fc_frag_lengths(cuts)
-    assert frags == [1, 6, 5], f"expected [1,6,5] for linear GAATTCGAATTC EcoRI, got {frags}"
+    for mode in ("single", "combined"):
+        cuts = find_cuts(seq, "linear", ["EcoRI"], mode=mode)
+        _assert_plain_types(cuts)
+        assert len(cuts) == 3, f"Expected 3 fragments for 2 cuts, got {len(cuts)} (mode={mode})"
+        positions = [c["position"] for c in cuts]
+        frags = [c["fragment_length"] for c in cuts]
+        assert positions == [0, 1, 7], f"Expected positions [0, 1, 7], got {positions} (mode={mode})"
+        assert frags == [1, 6, 5], f"Expected fragments [1, 6, 5], got {frags} (mode={mode})"
 
 
 # ---------------------------------------------------------------------------
-# 4. HAND-COMPUTED: a single cut on a LINEAR molecule yields TWO fragments
-#    (the 5'->cut fragment and the cut->3' fragment). find_cuts currently
-#    returns only one fragment for single-cut linear digests.
+# 5. HAND-COMPUTED: linear single cut yields [4, 8] at positions [0, 4]
+#    AAAGAATTCAAA (len 12), EcoRI cut at pos 4.
 # ---------------------------------------------------------------------------
 def test_linear_single_cut_yields_two_fragments():
-    seq = "AAAGAATTCAAA"  # one EcoRI site at 0-based 3 -> cut position 4
-    cuts = find_cuts(seq, "linear", ["EcoRI"])
-    frags = _fc_frag_lengths(cuts)
-    # cut at pos 4 of length-12 linear: fragments [4, 8]
-    assert frags == [4, 8], f"linear single cut must give 2 fragments [4,8], got {frags}"
+    seq = "AAAGAATTCAAA"
+    for mode in ("single", "combined"):
+        cuts = find_cuts(seq, "linear", ["EcoRI"], mode=mode)
+        _assert_plain_types(cuts)
+        assert len(cuts) == 2, f"Expected 2 fragments for single cut, got {len(cuts)} (mode={mode})"
+        positions = [c["position"] for c in cuts]
+        frags = [c["fragment_length"] for c in cuts]
+        assert positions == [0, 4], f"Expected positions [0, 4], got {positions} (mode={mode})"
+        assert frags == [4, 8], f"Expected fragments [4, 8], got {frags} (mode={mode})"
 
 
 # ---------------------------------------------------------------------------
-# 5. HAND-COMPUTED: multi-enzyme fragment must NOT cross-contaminate enzymes
-#    Each enzyme's reported fragment must equal its own single-enzyme fragment
-#    set, not the gap to the nearest cut of a different enzyme.
-#    "GAATTCCC GGATCC AA" (len 16): EcoRI@pos1, BamHI@pos9.
-#    EcoRI alone (linear) -> [1, 15]; BamHI alone -> [9, 7].
+# 6. HAND-COMPUTED: multi-enzyme in SINGLE mode does NOT cross-contaminate
+#    GAATTCCCGGATCCAA (len 16): EcoRI@pos1, BamHI@pos9.
+#    EcoRI alone -> positions [0, 1], frags [1, 15]
+#    BamHI alone -> positions [0, 9], frags [9, 7]
 # ---------------------------------------------------------------------------
-def test_multienzyme_does_not_cross_contaminate():
-    seq = "GAATTCCCGGATCCAA"  # 16 bp: EcoRI at 0, BamHI at 8
-    all_cuts = find_cuts(seq, "linear", ["EcoRI", "BamHI"])
+def test_multienzyme_does_not_cross_contaminate_single_mode():
+    seq = "GAATTCCCGGATCCAA"  # 16 bp: EcoRI at 0 (pos 1), BamHI at 8 (pos 9)
+    all_cuts = find_cuts(seq, "linear", ["EcoRI", "BamHI"], mode="single")
+    _assert_plain_types(all_cuts)
+
     by = defaultdict(list)
     for c in all_cuts:
         by[c["enzyme"]].append(c)
 
-    eco_frags = _fc_frag_lengths(by.get("EcoRI", []))
-    bam_frags = _fc_frag_lengths(by.get("BamHI", []))
+    eco_cuts = by.get("EcoRI", [])
+    bam_cuts = by.get("BamHI", [])
 
-    # EcoRI single-site linear -> two fragments, lengths 1 and 15 (NOT 8, which
-    # would be the gap to BamHI's cut).
-    assert eco_frags == [1, 15], f"EcoRI fragment crossed into BamHI: got {eco_frags}, expected [1,15]"
-    assert bam_frags == [9, 7], f"BamHI fragment wrong: got {bam_frags}, expected [9,7]"
+    eco_pos = [c["position"] for c in eco_cuts]
+    eco_frags = [c["fragment_length"] for c in eco_cuts]
+    assert eco_pos == [0, 1], f"EcoRI positions wrong: got {eco_pos}, expected [0, 1]"
+    assert eco_frags == [1, 15], f"EcoRI fragments wrong: got {eco_frags}, expected [1, 15]"
+
+    bam_pos = [c["position"] for c in bam_cuts]
+    bam_frags = [c["fragment_length"] for c in bam_cuts]
+    assert bam_pos == [0, 9], f"BamHI positions wrong: got {bam_pos}, expected [0, 9]"
+    assert bam_frags == [9, 7], f"BamHI fragments wrong: got {bam_frags}, expected [9, 7]"
 
 
 # ---------------------------------------------------------------------------
-# 6. HAND-COMPUTED: single cut on a CIRCULAR molecule yields ONE fragment
-#    (the full circle). Sanity check that circular handling is correct.
+# 7. HAND-COMPUTED: multi-enzyme in COMBINED mode yields physical digest
+#    GAATTCCCGGATCCAA (len 16): EcoRI@pos1, BamHI@pos9.
+#    Combined digest cuts at 1 and 9 -> positions [0, 1, 9], fragments [1, 8, 7]
+# ---------------------------------------------------------------------------
+def test_multienzyme_combined_mode_digest():
+    seq = "GAATTCCCGGATCCAA"
+    cuts = find_cuts(seq, "linear", ["EcoRI", "BamHI"], mode="combined")
+    _assert_plain_types(cuts)
+
+    positions = [c["position"] for c in cuts]
+    frags = [c["fragment_length"] for c in cuts]
+
+    assert positions == [0, 1, 9], f"Combined positions wrong: got {positions}, expected [0, 1, 9]"
+    assert frags == [1, 8, 7], f"Combined fragments wrong: got {frags}, expected [1, 8, 7]"
+
+
+# ---------------------------------------------------------------------------
+# 8. HAND-COMPUTED: circular single cut yields ONE full-length fragment [6] at pos [1]
 # ---------------------------------------------------------------------------
 def test_circular_single_cut_yields_one_full_fragment():
-    seq = "GAATTC"  # circular, one EcoRI site
-    cuts = find_cuts(seq, "circular", ["EcoRI"])
-    frags = _fc_frag_lengths(cuts)
-    assert frags == [6], f"circular single cut must give 1 fragment of full length 6, got {frags}"
+    seq = "GAATTC"  # circular, one EcoRI site at pos 1
+    for mode in ("single", "combined"):
+        cuts = find_cuts(seq, "circular", ["EcoRI"], mode=mode)
+        _assert_plain_types(cuts)
+        positions = [c["position"] for c in cuts]
+        frags = [c["fragment_length"] for c in cuts]
+        assert positions == [1], f"Expected circular position [1], got {positions} (mode={mode})"
+        assert frags == [6], f"Expected circular fragment [6], got {frags} (mode={mode})"
+
+
+# ---------------------------------------------------------------------------
+# 9. HAND-COMPUTED: circular multi-cut & multi-enzyme combined digest
+# ---------------------------------------------------------------------------
+def test_circular_multicut_combined_digest():
+    # 16 bp circular with EcoRI at pos 1 and BamHI at pos 9
+    # Cuts at 1 and 9: fragment 1->9 is 8 bp, fragment 9->1 (wrapped: 16-9+1) is 8 bp
+    seq = "GAATTCCCGGATCCAA"
+    cuts = find_cuts(seq, "circular", ["EcoRI", "BamHI"], mode="combined")
+    _assert_plain_types(cuts)
+
+    positions = [c["position"] for c in cuts]
+    frags = [c["fragment_length"] for c in cuts]
+
+    assert positions == [1, 9], f"Expected circular combined positions [1, 9], got {positions}"
+    assert frags == [8, 8], f"Expected circular combined fragments [8, 8], got {frags}"

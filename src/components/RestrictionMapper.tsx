@@ -40,20 +40,33 @@ type DigestMode = 'combined' | 'single';
 
 interface Props {
   sequence: SequenceState;
+  // R4: selection + digest results are lifted into SequenceViewer so they survive
+  // viewMode switches and can be rendered as an overlay on Circular/Linear viewers.
+  selectedEnzymes: string[];
+  onSelectedEnzymesChange: (updater: string[] | ((prev: string[]) => string[])) => void;
+  cuts: DigestCut[];
+  digestMode: DigestMode;
+  onDigestModeChange: (mode: DigestMode) => void;
+  loading: boolean;
+  error: string | null;
 }
 
-export default function RestrictionMapper({ sequence }: Props) {
+export default function RestrictionMapper({
+  sequence,
+  selectedEnzymes,
+  onSelectedEnzymesChange: setSelectedEnzymes,
+  cuts,
+  digestMode,
+  onDigestModeChange: setDigestMode,
+  loading,
+  error,
+}: Props) {
   const [enzymeCatalog, setEnzymeCatalog] = useState<Record<string, { site: string; cut_offset: number }>>(
     DEFAULT_COMMON_ENZYMES
   );
-  const [selectedEnzymes, setSelectedEnzymes] = useState<string[]>(['EcoRI', 'NdeI', 'PstI']);
-  const [cuts, setCuts] = useState<DigestCut[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // New UI controls
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('unique');
-  const [digestMode, setDigestMode] = useState<DigestMode>('combined');
   const [searchQuery, setSearchQuery] = useState('');
   const [showNonCutters, setShowNonCutters] = useState(true);
 
@@ -135,33 +148,6 @@ export default function RestrictionMapper({ sequence }: Props) {
       return true;
     });
   }, [enzymeCatalog, enzymeCutCounts, filterCategory, searchQuery, showNonCutters]);
-
-  // Run digest whenever sequence, selected enzymes, or digestMode changes
-  useEffect(() => {
-    runDigest();
-  }, [sequence.sequence, sequence.topology, selectedEnzymes, digestMode]);
-
-  async function runDigest() {
-    if (selectedEnzymes.length === 0 || !sequence.sequence) {
-      setCuts([]);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await invoke<any>('digest_sequence', {
-        sequence: sequence.sequence,
-        topology: sequence.topology,
-        enzymes: selectedEnzymes,
-        mode: digestMode,
-      });
-      setCuts(res.cuts || []);
-    } catch (err: any) {
-      setError(err?.message_user || err?.message || 'Digest failed');
-    } finally {
-      setLoading(false);
-    }
-  }
 
   const toggleEnzyme = (name: string) => {
     setSelectedEnzymes((prev) =>
