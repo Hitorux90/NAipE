@@ -9,6 +9,8 @@ interface Props {
   restrictionCuts?: DigestCut[];
   restrictionSelectedEnzymes?: string[];
   onCutClick?: (cut: DigestCut) => void;
+  // R5: Two-way gel <-> map linkage
+  selectedFragmentSpan?: { start: number; end: number } | null;
 }
 
 /* ── R4: stable per-enzyme color assignment for restriction cut-site marks ── */
@@ -104,6 +106,7 @@ export default function LinearViewer({
   restrictionCuts,
   restrictionSelectedEnzymes,
   onCutClick,
+  selectedFragmentSpan,
 }: Props) {
   const wrapRef    = useRef<HTMLDivElement>(null);
   const canvasRef  = useRef<HTMLCanvasElement>(null);
@@ -121,10 +124,14 @@ export default function LinearViewer({
   const cutHitsRef     = useRef<{ cut: DigestCut; sx: number; sy: number }[]>([]);
   const [hoveredCut, setHoveredCut] = useState<{ cut: DigestCut; sx: number; sy: number } | null>(null);
 
+  // R5: highlighted fragment span overlay state
+  const selectedSpanRef = useRef<typeof selectedFragmentSpan>(undefined);
+
   useEffect(() => { seqRef.current = sequence; }, [sequence]);
   useEffect(() => { cutsRef.current = restrictionCuts || []; requestDraw(); }, [restrictionCuts]);
   useEffect(() => { selEnzymesRef.current = restrictionSelectedEnzymes || []; requestDraw(); }, [restrictionSelectedEnzymes]);
   useEffect(() => { onCutClickRef.current = onCutClick; }, [onCutClick]);
+  useEffect(() => { selectedSpanRef.current = selectedFragmentSpan; requestDraw(); }, [selectedFragmentSpan]);
 
   /* ── Core draw function ─────────────────────────────────────────────────── */
   const drawOnCanvas = useCallback(() => {
@@ -143,6 +150,8 @@ export default function LinearViewer({
     const totalBp = seq.length_bp || 1;
     const anns    = seq.annotations || [];
     const laneMap = assignLanes(anns);
+    const overlayCuts = cutsRef.current;
+    const overlaySelEnzymes = selEnzymesRef.current;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -182,6 +191,56 @@ export default function LinearViewer({
     ctx.lineWidth   = 4;
     ctx.lineCap     = 'round';
     ctx.stroke();
+
+    // R5: highlighted fragment span overlay on linear backbone
+    const selectedSpan = selectedSpanRef.current;
+    if (selectedSpan && totalBp > 0 && overlaySelEnzymes.length > 0) {
+      const { start, end } = selectedSpan;
+      ctx.save();
+
+      const drawSpanRect = (sBp: number, eBp: number) => {
+        const wx1 = sBp <= 0 ? 0 : bpToWX(sBp);
+        const wx2 = eBp >= totalBp ? WORLD_W : bpToWX(eBp);
+        const w   = Math.max(2 / scale, wx2 - wx1);
+        const yTop = -8;
+        const h = 16;
+
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.40)';
+        ctx.fillRect(wx1, yTop, w, h);
+
+        ctx.strokeStyle = '#38BDF8';
+        ctx.lineWidth   = 1.5 / scale;
+        ctx.strokeRect(wx1, yTop, w, h);
+
+        // Boundary tick lines
+        ctx.beginPath();
+        ctx.moveTo(wx1, yTop - 4);
+        ctx.lineTo(wx1, yTop + h + 4);
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth   = 2 / scale;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(wx2, yTop - 4);
+        ctx.lineTo(wx2, yTop + h + 4);
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth   = 2 / scale;
+        ctx.stroke();
+      };
+
+      if (start === end) {
+        // Full sequence or single cut
+        drawSpanRect(1, totalBp);
+      } else if (start <= end) {
+        drawSpanRect(start, end);
+      } else {
+        // Wrapping circular span rendered on linear viewer: [start, totalBp] and [0, end]
+        drawSpanRect(start, totalBp);
+        drawSpanRect(0, end);
+      }
+
+      ctx.restore();
+    }
 
     // Feature rectangles and strand arrow indicators
     for (const ann of anns) {
@@ -281,8 +340,6 @@ export default function LinearViewer({
 
     // R4: restriction cut-site tick marks (drawn in screen space so stroke width
     // stays constant regardless of zoom level; labels below reuse the label-density gate)
-    const overlayCuts = cutsRef.current;
-    const overlaySelEnzymes = selEnzymesRef.current;
     const backboneSY = wToSY(0);
     const newCutHits: { cut: DigestCut; sx: number; sy: number }[] = [];
     for (const cut of overlayCuts) {

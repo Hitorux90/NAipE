@@ -9,6 +9,8 @@ interface Props {
   restrictionCuts?: DigestCut[];
   restrictionSelectedEnzymes?: string[];
   onCutClick?: (cut: DigestCut) => void;
+  // R5: Two-way gel <-> map linkage
+  selectedFragmentSpan?: { start: number; end: number } | null;
 }
 
 /* ── R4: stable per-enzyme color assignment for restriction cut-site marks ── */
@@ -80,6 +82,7 @@ export default function CircularViewer({
   restrictionCuts,
   restrictionSelectedEnzymes,
   onCutClick,
+  selectedFragmentSpan,
 }: Props) {
   const wrapRef     = useRef<HTMLDivElement>(null);
   const canvasRef   = useRef<HTMLCanvasElement>(null);
@@ -96,10 +99,14 @@ export default function CircularViewer({
   const cutHitsRef     = useRef<{ cut: DigestCut; sx: number; sy: number }[]>([]);
   const [hoveredCut, setHoveredCut] = useState<{ cut: DigestCut; sx: number; sy: number } | null>(null);
 
+  // R5: highlighted fragment span overlay state
+  const selectedSpanRef = useRef<typeof selectedFragmentSpan>(undefined);
+
   useEffect(() => { seqRef.current = sequence; }, [sequence]);
   useEffect(() => { cutsRef.current = restrictionCuts || []; requestDraw(); }, [restrictionCuts]);
   useEffect(() => { selEnzymesRef.current = restrictionSelectedEnzymes || []; requestDraw(); }, [restrictionSelectedEnzymes]);
   useEffect(() => { onCutClickRef.current = onCutClick; }, [onCutClick]);
+  useEffect(() => { selectedSpanRef.current = selectedFragmentSpan; requestDraw(); }, [selectedFragmentSpan]);
 
   /* ── Core draw ────────────────────────────────────────────────────────── */
   const drawOnCanvas = useCallback(() => {
@@ -306,6 +313,69 @@ export default function CircularViewer({
       newCutHits.push({ cut, sx: cx + cosA * midR, sy: cy + sinA * midR });
     }
     cutHitsRef.current = newCutHits;
+
+    // R5: highlighted fragment span overlay on the circular backbone
+    const selectedSpan = selectedSpanRef.current;
+    if (selectedSpan && totalBp > 0 && overlaySelEnzymes.length > 0) {
+      const { start, end } = selectedSpan;
+      let sa: number;
+      let ea: number;
+
+      if (start === end) {
+        // Single-cut / full circle
+        sa = bpToAngle(start);
+        ea = sa + 2 * Math.PI;
+      } else if (start < end) {
+        sa = bpToAngle(start);
+        ea = bpToAngle(end);
+      } else {
+        // Wrapping fragment across the origin
+        sa = bpToAngle(start);
+        ea = bpToAngle(end + totalBp);
+      }
+
+      ctx.save();
+      // Outer translucent glow / arc
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, sa, ea);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.40)';
+      ctx.lineWidth   = ARC_THICKNESS + 6;
+      ctx.lineCap     = 'butt';
+      ctx.stroke();
+
+      // Sharp accent border arcs
+      ctx.beginPath();
+      ctx.arc(cx, cy, R + (ARC_THICKNESS + 6) / 2, sa, ea);
+      ctx.strokeStyle = '#38BDF8';
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, R - (ARC_THICKNESS + 6) / 2, sa, ea);
+      ctx.strokeStyle = '#38BDF8';
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+
+      // Boundary tick marks at start & end
+      if (start !== end) {
+        const drawBoundaryTick = (bp: number) => {
+          const a = bpToAngle(bp);
+          const cosA = Math.cos(a);
+          const sinA = Math.sin(a);
+          const r1 = R - (ARC_THICKNESS + 10) / 2;
+          const r2 = R + (ARC_THICKNESS + 10) / 2;
+          ctx.beginPath();
+          ctx.moveTo(cx + cosA * r1, cy + sinA * r1);
+          ctx.lineTo(cx + cosA * r2, cy + sinA * r2);
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth   = 2;
+          ctx.stroke();
+        };
+        drawBoundaryTick(start);
+        drawBoundaryTick(end);
+      }
+      ctx.restore();
+    }
 
     ctx.restore(); // end PHASE 1
 

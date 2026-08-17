@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { SequenceState, DigestCut } from '../src/contracts';
 import VirtualGel from './VirtualGel';
+import { computeFragmentSpans, isSpanSelected } from '../utils/restrictionUtils';
 
 const DEFAULT_COMMON_ENZYMES: Record<string, { site: string; cut_offset: number }> = {
   EcoRI: { site: 'GAATTC', cut_offset: 1 },
@@ -49,6 +50,9 @@ interface Props {
   onDigestModeChange: (mode: DigestMode) => void;
   loading: boolean;
   error: string | null;
+  // R5: Two-way gel <-> map linkage
+  selectedFragmentSpan?: { start: number; end: number } | null;
+  onFragmentClick?: (span: { start: number; end: number; length: number; enzyme: string } | null) => void;
 }
 
 export default function RestrictionMapper({
@@ -60,6 +64,8 @@ export default function RestrictionMapper({
   onDigestModeChange: setDigestMode,
   loading,
   error,
+  selectedFragmentSpan,
+  onFragmentClick,
 }: Props) {
   const [enzymeCatalog, setEnzymeCatalog] = useState<Record<string, { site: string; cut_offset: number }>>(
     DEFAULT_COMMON_ENZYMES
@@ -357,16 +363,41 @@ export default function RestrictionMapper({
                 </tr>
               </thead>
               <tbody>
-                {cuts.map((cut, idx) => (
-                  <tr key={`${cut.enzyme}-${cut.position}-${idx}`} style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
-                    <td style={{ padding: '6px', fontWeight: '600', color: 'var(--color-text-primary)' }}>{cut.enzyme}</td>
-                    <td style={{ padding: '6px', fontFamily: 'monospace', color: 'var(--color-primary-accent)' }}>{cut.site}</td>
-                    <td style={{ padding: '6px', fontFamily: 'monospace' }}>{cut.position} bp</td>
-                    <td style={{ padding: '6px', fontFamily: 'monospace', fontWeight: '600', color: 'var(--color-success, #10B981)' }}>
-                      {cut.fragment_length} bp
-                    </td>
-                  </tr>
-                ))}
+                {(() => {
+                  const spans = computeFragmentSpans(cuts, sequence.length_bp, sequence.topology);
+                  return cuts.map((cut, idx) => {
+                    const span = spans[idx];
+                    const isSelected = span ? isSpanSelected(span, selectedFragmentSpan) : false;
+                    return (
+                      <tr
+                        key={`${cut.enzyme}-${cut.position}-${idx}`}
+                        style={{
+                          borderBottom: '1px solid var(--color-border-subtle)',
+                          cursor: span ? 'pointer' : undefined,
+                          backgroundColor: isSelected ? 'rgba(56, 189, 248, 0.15)' : undefined,
+                          transition: 'background-color 0.15s ease',
+                        }}
+                        onClick={() => {
+                          if (span && onFragmentClick) {
+                            if (isSelected) {
+                              onFragmentClick(null);
+                            } else {
+                              onFragmentClick(span);
+                            }
+                          }
+                        }}
+                        title={span ? `Click to highlight span ${span.start}–${span.end} bp` : undefined}
+                      >
+                        <td style={{ padding: '6px', fontWeight: '600', color: 'var(--color-text-primary)' }}>{cut.enzyme}</td>
+                        <td style={{ padding: '6px', fontFamily: 'monospace', color: 'var(--color-primary-accent)' }}>{cut.site}</td>
+                        <td style={{ padding: '6px', fontFamily: 'monospace' }}>{cut.position} bp</td>
+                        <td style={{ padding: '6px', fontFamily: 'monospace', fontWeight: '600', color: isSelected ? 'var(--color-primary-accent, #38BDF8)' : 'var(--color-success, #10B981)' }}>
+                          {cut.fragment_length} bp
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
           )}
@@ -376,8 +407,11 @@ export default function RestrictionMapper({
         <VirtualGel
           sequenceName={sequence.name}
           totalBp={sequence.length_bp}
+          topology={sequence.topology}
           cuts={cuts}
           selectedEnzymes={selectedEnzymes}
+          selectedFragmentSpan={selectedFragmentSpan}
+          onFragmentClick={onFragmentClick}
         />
       </div>
     </div>
