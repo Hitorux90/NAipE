@@ -622,12 +622,13 @@ def _handle_command(cmd, msg_id, payload):
         template = payload.get("template") or ""
         fwd = payload.get("forward_primer") or ""
         rev = payload.get("reverse_primer") or ""
+        topology = payload.get("topology") or "linear"
         try:
             try:
                 from .primer import simulate_pcr as run_pcr
             except ImportError:
                 from primer import simulate_pcr as run_pcr
-            result = run_pcr(template, fwd, rev)
+            result = run_pcr(template, fwd, rev, topology)
             return {
                 "id": msg_id,
                 "type": "response",

@@ -5,12 +5,14 @@ import { useSequenceStore } from '../store/useSequenceStore';
 
 interface Props {
   sequence: SequenceState;
+  fwdPrimer: string;
+  setFwdPrimer: (v: string) => void;
+  revPrimer: string;
+  setRevPrimer: (v: string) => void;
 }
 
-export default function PrimerDesigner({ sequence }: Props) {
+export default function PrimerDesigner({ sequence, fwdPrimer, setFwdPrimer, revPrimer, setRevPrimer }: Props) {
   const { addSequence } = useSequenceStore();
-  const [fwdPrimer, setFwdPrimer] = useState('');
-  const [revPrimer, setRevPrimer] = useState('');
   const [fwdAnalysis, setFwdAnalysis] = useState<any>(null);
   const [revAnalysis, setRevAnalysis] = useState<any>(null);
   const [pcrResult, setPcrResult] = useState<any>(null);
@@ -52,6 +54,7 @@ export default function PrimerDesigner({ sequence }: Props) {
         template: sequence.sequence,
         forwardPrimer: fwdPrimer,
         reversePrimer: revPrimer,
+        topology: sequence.topology || 'linear',
       });
 
       if (res.ok) {
@@ -102,9 +105,14 @@ export default function PrimerDesigner({ sequence }: Props) {
 
   return (
     <div className="primer-designer" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px' }}>
-      <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-primary)' }}>
-        Primer Design & Virtual PCR Simulator
-      </h3>
+      <div>
+        <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-primary)' }}>
+          Primer Design & Virtual PCR Simulator
+        </h3>
+        <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+          Tm computed via Wallace (&lt;14 bp) / Marmur-Doty (≥14 bp). Note: Basic formula differs from salt-adjusted nearest-neighbor (NEB/IDT) by ~10–15 °C.
+        </p>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
         {/* Forward Primer Input & Metrics */}
@@ -120,7 +128,7 @@ export default function PrimerDesigner({ sequence }: Props) {
           {fwdAnalysis && (
             <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--color-text-secondary)', display: 'flex', gap: '12px' }}>
               <span>Length: <b>{fwdAnalysis.length} bp</b></span>
-              <span>Tm: <b>{fwdAnalysis.tm_celsius}°C</b></span>
+              <span title="Marmur-Doty (>=14) / Wallace (<14)">Tm: <b>{fwdAnalysis.tm_celsius}°C</b></span>
               <span>GC: <b>{fwdAnalysis.gc_percent}%</b></span>
             </div>
           )}
@@ -139,7 +147,7 @@ export default function PrimerDesigner({ sequence }: Props) {
           {revAnalysis && (
             <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--color-text-secondary)', display: 'flex', gap: '12px' }}>
               <span>Length: <b>{revAnalysis.length} bp</b></span>
-              <span>Tm: <b>{revAnalysis.tm_celsius}°C</b></span>
+              <span title="Marmur-Doty (>=14) / Wallace (<14)">Tm: <b>{revAnalysis.tm_celsius}°C</b></span>
               <span>GC: <b>{revAnalysis.gc_percent}%</b></span>
             </div>
           )}

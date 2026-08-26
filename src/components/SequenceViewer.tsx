@@ -200,6 +200,8 @@ export default function SequenceViewer({
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const [primerFwd, setPrimerFwd] = useState('');
+  const [primerRev, setPrimerRev] = useState('');
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -315,7 +317,7 @@ export default function SequenceViewer({
     setTimeout(() => {
       const lineIndex = Math.floor((start - 1) / lineBp);
       const targetEl = document.getElementById(`seq-line-${lineIndex}`);
-      if (targetEl) {
+      if (targetEl && typeof targetEl.scrollIntoView === 'function') {
         targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     }, 0);
@@ -499,7 +501,7 @@ export default function SequenceViewer({
     // Scroll sequence line into view dynamically based on lineBp
     const lineIndex = Math.floor((f.start - 1) / lineBp);
     const targetEl = document.getElementById(`seq-line-${lineIndex}`);
-    if (targetEl) {
+    if (targetEl && typeof targetEl.scrollIntoView === 'function') {
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }
@@ -673,6 +675,35 @@ export default function SequenceViewer({
     });
   }
 
+  function handleCopy(e: React.ClipboardEvent<HTMLDivElement>) {
+    if (!sequence) return;
+
+    if (selectedRange) {
+      const copiedStr = sequence.sequence.slice(selectedRange.start - 1, selectedRange.end);
+      e.clipboardData.setData('text/plain', copiedStr);
+      e.preventDefault();
+      return;
+    }
+
+    const selection = window.getSelection()?.toString();
+    if (selection) {
+      const cleanSeq = selection.replace(/\s+/g, '');
+      if (cleanSeq.length > 0) {
+        e.clipboardData.setData('text/plain', cleanSeq);
+        e.preventDefault();
+        return;
+      }
+    }
+  }
+
+  function handleCut(e: React.ClipboardEvent<HTMLDivElement>) {
+    if (!sequence || !selectedRange) return;
+    const copiedStr = sequence.sequence.slice(selectedRange.start - 1, selectedRange.end);
+    e.clipboardData.setData('text/plain', copiedStr);
+    deleteSelectedRegion();
+    e.preventDefault();
+  }
+
   if (!sequence) {
     return (
       <div className="canvas__empty">
@@ -818,7 +849,15 @@ export default function SequenceViewer({
           onFragmentClick={(span) => setSelectedFragmentSpan(span ? { start: span.start, end: span.end } : null)}
         />
       )}
-      {viewMode === 'primer' && <PrimerDesigner sequence={sequence} />}
+      {viewMode === 'primer' && (
+        <PrimerDesigner
+          sequence={sequence}
+          fwdPrimer={primerFwd}
+          setFwdPrimer={setPrimerFwd}
+          revPrimer={primerRev}
+          setRevPrimer={setPrimerRev}
+        />
+      )}
       {viewMode === 'orf' && <OrfFinder sequence={sequence} />}
       {viewMode === 'align' && <SequenceAligner sequence={sequence} />}
       {viewMode === 'clone' && <VirtualCloning sequence={sequence} />}
@@ -869,6 +908,8 @@ export default function SequenceViewer({
             onBlur={() => setIsFocused(false)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
+            onCopy={handleCopy}
+            onCut={handleCut}
           >
             {/* Hidden textarea element for Vitest contract compatibility */}
             <textarea
