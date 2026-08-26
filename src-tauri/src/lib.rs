@@ -951,12 +951,14 @@ async fn simulate_pcr(
     template: String,
     forward_primer: String,
     reverse_primer: String,
+    topology: Option<String>,
 ) -> Result<serde_json::Value, SidecarError> {
     let req = sidecar::SidecarRequest::new(uuid::Uuid::new_v4(), "simulate_pcr")
         .with_payload(serde_json::json!({
             "template": template,
             "forward_primer": forward_primer,
             "reverse_primer": reverse_primer,
+            "topology": topology.unwrap_or_else(|| "linear".to_string()),
         }));
     let resp = sidecar.send_request(req).await.map_err(|e| SidecarError {
         error_code: "SIDECAR_ERROR".into(),
