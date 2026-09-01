@@ -15,14 +15,79 @@ use uuid::Uuid;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Finds a working Python 3 interpreter on this Windows host.
+/// Resolve an executable by name against `$PATH` (no extra dependencies).
+#[cfg(unix)]
+fn which(prog: &str) -> Option<PathBuf> {
+    use std::os::unix::fs::PermissionsExt;
+    std::env::var_os("PATH").and_then(|paths| {
+        std::env::split_paths(&paths)
+            .filter_map(|dir| {
+                let candidate = dir.join(prog);
+                let meta = std::fs::metadata(&candidate).ok()?;
+                (meta.is_file() && meta.permissions().mode() & 0o111 != 0)
+                    .then_some(candidate)
+            })
+            .next()
+    })
+}
+
+/// Resolve an executable by name against `%PATH%` (Windows).
+#[cfg(windows)]
+fn which(prog: &str) -> Option<PathBuf> {
+    const EXTS: [&str; 3] = [".exe", ".bat", ".cmd"];
+    std::env::var_os("PATH").and_then(|paths| {
+        std::env::split_paths(&paths)
+            .filter_map(|dir| {
+                let plain = dir.join(prog);
+                if plain.is_file() {
+                    return Some(plain);
+                }
+                EXTS.iter().find_map(|ext| {
+                    let c = dir.join(format!("{}{}", prog, ext));
+                    c.is_file().then_some(c)
+                })
+            })
+            .next()
+    })
+}
+
+/// Finds a working Python 3 interpreter, cross-platform.
 fn find_python() -> PathBuf {
-    std::env::var("APEPYTHON")
-        .or_else(|_| std::env::var("PYTHON"))
-        .unwrap_or_else(|_| {
-            r"C:\Users\Raúl\AppData\Local\Programs\Python\Python312\python.exe".to_string()
-        })
-        .into()
+    // 1. Explicit overrides: APEPYTHON / PYTHON (full path or a bare name on PATH).
+    for var in ["APEPYTHON", "PYTHON"] {
+        if let Ok(raw) = std::env::var(var) {
+            if !raw.trim().is_empty() {
+                let candidate = PathBuf::from(&raw);
+                if candidate.is_file() {
+                    return candidate;
+                }
+                if let Some(full) = which(&raw) {
+                    return full;
+                }
+            }
+        }
+    }
+
+    // 2. Windows dev fallback (preserves the original local behaviour).
+    #[cfg(windows)]
+    {
+        let dev =
+            PathBuf::from(r"C:\Users\Raúl\AppData\Local\Programs\Python\Python312\python.exe");
+        if dev.is_file() {
+            return dev;
+        }
+    }
+
+    // 3. System interpreter on PATH (python3 preferred, then python).
+    if let Some(p) = which("python3") {
+        return p;
+    }
+    if let Some(p) = which("python") {
+        return p;
+    }
+
+    // 4. No interpreter found — a sentinel that fails the existence assert below.
+    PathBuf::from("python3")
 }
 
 /// Resolves the sidecar script relative to the project root.
