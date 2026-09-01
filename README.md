@@ -1,13 +1,36 @@
 # NAipE — New AI Plasmid Editor
 
-Tauri v2 + React desktop app for DNA sequence viewing, GenBank annotation, and parts library management.
+A desktop plasmid/DNA sequence editor built with Tauri v2 (Rust), React + TypeScript, and a Python NDJSON sidecar for sequence computation.
+
+> **Status: alpha / early preview.** This is a public repository release for visibility and early feedback, not a finished product. See the feature status table below before relying on anything.
+
+## Feature status
+
+**Verified & client-confirmed** — these have been built, tested, and confirmed working by the project owner:
+
+| Feature | Description |
+|---|---|
+| Sequence viewer | Circular and linear plasmid maps |
+| Restriction mapping | REBASE enzyme catalog, combined digest, gel ↔ map linkage |
+| Primer design & virtual PCR | Tm/GC calculation, exact-scan `simulate_pcr`, circular topology support |
+
+**Present in the codebase but UNVERIFIED / in progress** — these tools exist and have unit tests, but have not been validated end-to-end or confirmed by the project owner. **Do not rely on them yet:**
+
+| Feature | Status |
+|---|---|
+| Alignment | unverified — do not rely on it yet |
+| ORF finding | unverified — do not rely on it yet |
+| Virtual assembly | unverified — do not rely on it yet |
+| Biochemical properties | unverified — do not rely on it yet |
+| Auto-annotation | unverified — do not rely on it yet |
+| Motif search | unverified — do not rely on it yet |
 
 ## Stack
 
 - **Desktop shell:** Tauri v2 (Rust)
 - **Frontend:** React + TypeScript + Vite
 - **Database:** SQLite via sqlx
-- **Computation:** Python 3.12 NDJSON sidecar (persistent stdin/stdout process)
+- **Computation:** Python 3.12 NDJSON sidecar (persistent stdin/stdout process, `src-tauri/sidecar/`)
 
 ## Supported file formats
 
@@ -17,55 +40,55 @@ Tauri v2 + React desktop app for DNA sequence viewing, GenBank annotation, and p
 | FASTA | `.fasta` | ✅ Sequence only | ✅ |
 | ApE JSON | `.dna` | ✅ Legacy | ✅ |
 
-## Current state
+## Build & run (Windows)
 
-- **Visual:** 20-defect audit remediation complete — split-pane layout, token-based colors, nav rail (44px touch targets), full-width status bar, feature tiles with color-coded borders
-- **Backend:** Sidecar health ping (`pong`), NDJSON protocol, GenBank parser with 26/26 pytest
-- **Frontend:** `features` pipeline wired Python → Rust → TypeScript → React
-- **Tests:** 26 Python (pytest), 12 Rust unit, 38 Vitest frontend
-- **Known limitations:** Sidecar integration tests (3/6 pass — require live Python sidecar); no dark mode; no plugin system
-
-## Quick start
+Requires Node.js, Rust (stable toolchain), and Python 3.12.
 
 ```powershell
-$env:APEPYTHON = "C:\Users\Raúl\AppData\Local\Programs\Python\Python312\python.exe"
+# Point the app at your Python 3.12 interpreter
+$env:APEPYTHON = "<path to your Python 3.12 python.exe>"
+
 cd C:\ApE
 npm run tauri dev
 ```
 
+The frontend lives in `src/` (its own `package.json` with the Vite/React toolchain); the repo-root `package.json` is a thin wrapper that forwards `npm run dev` / `npm run build` into `src/`.
+
 ## Test commands
 
 ```powershell
-# Python sidecar (requires Python 3.12 with pytest installed)
-& "C:\Users\Raúl\AppData\Local\Programs\Python\Python312\python.exe" -m pytest src-tauri\tests\sidecar_ndjson_smoke.py -v
-# Expected: 26 passed
+# Python sidecar tests (pytest)
+& "<path to your Python 3.12 python.exe>" -m pytest src-tauri\tests\ -q
+# Expected: 70 passed, 4 skipped
 
-# Rust unit tests
-cd C:\ApE\src-tauri && cargo test --test commands_rs_unit
-# Expected: 12 passed
+# If your shell has a PYTHONPATH set that conflicts with the project's sidecar
+# imports (e.g. from another Python dev environment), clear it first:
+#   Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
 
-# Frontend tests
-cd C:\ApE\src && npx vitest run
-# Expected: 38 passed
+# Frontend tests (Vitest)
+cd C:\ApE\src
+npx vitest run
+# Expected: 77 passed / 20 files, 0 failed
 
-# Full build check
-cd C:\ApE\src-tauri && cargo check    # Rust: exit 0
-cd C:\ApE\src && npx vite build        # Frontend: 1818 modules
+# Rust tests (PowerShell)
+cd C:\ApE\src-tauri
+cargo test
+# Expected: 45 passed, 0 failed
+
+# TypeScript build check
+cd C:\ApE\src
+npx tsc -b
+# Expected: exit 0, no errors
 ```
 
-## Vault
+> Clearing `PYTHONPATH` (above) is only needed if your local shell has one set that conflicts with the project's sidecar imports (e.g. from another Python-based dev environment). CI runs plain `pytest` since it has no inherited `PYTHONPATH`.
 
-Full project documentation, technical history, and meta-lessons at:
-`C:\DatosHermes\MiCerebro\50_Projects\NAipE\`
+## Screenshots
 
-Start with **`09_Quick_Reference.md`** for canonical paths, constraints, and current state.
+<!-- TODO: add screenshots -->
 
-## Key recent fixes
+## License
 
-| Commit | What |
-|--------|------|
-| `866f0f3` | Wire GenBank `features` through App.tsx (audit-driven) |
-| `fd74f2a` | Add `features` field to Rust `Sequence` struct |
-| `634e38e` | GenBank parser: preserve `/label`, `/note`, `/color` qualifiers |
-| `bd219f9` | Fix CSS paths in `index.html` — 10 stylesheets silently broken |
-| `9b9e0ba` | Sidecar health ping: `alive` → `pong` field match |
+[MIT](LICENSE) — Copyright (c) 2026 NAipE contributors
+
+**Status:** alpha / early preview.
