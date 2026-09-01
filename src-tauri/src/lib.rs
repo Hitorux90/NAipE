@@ -284,7 +284,7 @@ pub fn run() {
 
 #[tauri::command]
 fn greet(name: &str) -> String {
-    format!("Hello, {}! New ApE scaffold is ready.", name)
+    format!("Hello, {}! NAipE scaffold is ready.", name)
 }
 
 #[tauri::command]

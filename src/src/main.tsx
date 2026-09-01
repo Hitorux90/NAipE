@@ -1,4 +1,4 @@
-// src/src/main.tsx — React entry point for New ApE.
+// src/src/main.tsx — React entry point for NAipE.
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { invoke } from '@tauri-apps/api/core';
@@ -24,5 +24,5 @@ async function bootstrap() {
 }
 
 bootstrap().catch((err) => {
-  console.error('Failed to bootstrap New ApE frontend:', err);
+  console.error('Failed to bootstrap NAipE frontend:', err);
 });
