@@ -8,6 +8,16 @@ import json
 import os
 import sys
 
+# Make the `sidecar` package importable no matter how this file is launched.
+# `python sidecar/__main__.py` puts `sidecar/` (not its parent `src-tauri/`) on
+# sys.path[0], which breaks the `from sidecar.adapters import ...` imports used
+# below (and inside `sidecar/adapters/__init__.py`). Adding the repo parent
+# makes the package resolvable in both `python sidecar/__main__.py` and
+# `python -m sidecar` modes.
+_sidecar_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _sidecar_root not in sys.path:
+    sys.path.insert(0, _sidecar_root)
+
 try:
     import Bio  # noqa: F401
 except ImportError as err:
@@ -136,6 +146,38 @@ def _handle_command(cmd, msg_id, payload):
         response["command"] = "new_sequence"
         response.setdefault("payload", {})["deprecated"] = True
         return response
+
+    if cmd == "parse_ape":
+        content = payload.get("content", "")
+        return {
+            "id": msg_id,
+            "type": "response",
+            "command": "parse_ape",
+            "payload": {
+                "name": "parsed",
+                "sequence": content[:200] if content else "",
+                "topology": "circular",
+                "annotations": [],
+                "length_bp": len(content) if content else 0,
+            },
+            "ok": True,
+        }
+
+    if cmd == "parse_gb":
+        content = payload.get("content", "")
+        return {
+            "id": msg_id,
+            "type": "response",
+            "command": "parse_gb",
+            "payload": {
+                "name": "parsed-gb",
+                "sequence": content[:200] if content else "",
+                "topology": "linear",
+                "annotations": [],
+                "length_bp": len(content) if content else 0,
+            },
+            "ok": True,
+        }
 
     if cmd == "save_as_dna":
         target_path = payload.get("target_path")
