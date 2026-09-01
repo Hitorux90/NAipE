@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "New ApE",
+  "productName": "NAipE",
   "version": "0.1.0",
-  "identifier": "com.newape.dev",
+  "identifier": "com.naipe.dev",
   "build": {
     "beforeDevCommand": "cd src && npm run dev",
     "devUrl": "http://localhost:1420",
@@ -15,7 +15,7 @@
     },
     "windows": [
       {
-        "title": "New ApE",
+        "title": "NAipE",
         "minWidth": 800,
         "minHeight": 600,
         "width": 1200,

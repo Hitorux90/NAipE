@@ -1,5 +1,5 @@
 // ===========================================================================
-// Shared contract / spec types for New ApE (Sprint 1)
+// Shared contract / spec types for NAipE (Sprint 1)
 // React + Zustand consumer file — no app-level imports.
 // ===========================================================================
 
