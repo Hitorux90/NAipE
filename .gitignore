@@ -42,3 +42,6 @@ __pycache__/
 reports/
 SAD_Addendum_v1_EN.md
 scripts/
+
+# Internal release runbook (contains account name + push commands)
+STEP3_REPO_HANDOFF.md
