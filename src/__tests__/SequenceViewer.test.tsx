@@ -167,5 +167,109 @@ describe('SequenceViewer', () => {
       })
     );
   });
+
+  it('opens context menu on right-click and copies forward, reverse-complement, and translation when feature selected', () => {
+    const writeTextMock = vi.fn();
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    const seqWithFeature: Sequence = {
+      ...sampleSequence,
+      sequence: 'ATGAAATTT',
+      length_bp: 9,
+      annotations: [
+        { id: 'f1', name: 'GeneA', type: 'gene', start: 1, end: 6, strand: '+', color: '#ff0000' },
+      ],
+    };
+    render(<SequenceViewer sequence={seqWithFeature} onChange={() => {}} />);
+
+    // Select feature (ATGAAA)
+    const featureTile = document.querySelector('.feature-tile');
+    expect(featureTile).toBeTruthy();
+    fireEvent.click(featureTile!);
+
+    const seqWindow = document.querySelector('.seq-window');
+    expect(seqWindow).toBeTruthy();
+
+    // Right click to open context menu
+    fireEvent.contextMenu(seqWindow!, { clientX: 100, clientY: 200 });
+
+    const menu = screen.getByRole('menu', { name: /sequence context menu/i });
+    expect(menu).toBeTruthy();
+
+    // Click "Copy reverse-complement"
+    const revCompBtn = screen.getByRole('menuitem', { name: /copy reverse-complement/i });
+    fireEvent.click(revCompBtn);
+
+    // ATGAAA -> reverse complement is TTTCAT
+    expect(writeTextMock).toHaveBeenCalledWith('TTTCAT');
+    expect(screen.queryByRole('menu', { name: /sequence context menu/i })).toBeNull();
+  });
+
+  it('copies translation via context menu', () => {
+    const writeTextMock = vi.fn();
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    const seqWithFeature: Sequence = {
+      ...sampleSequence,
+      sequence: 'ATGAAATTT',
+      length_bp: 9,
+      annotations: [
+        { id: 'f1', name: 'GeneA', type: 'gene', start: 1, end: 6, strand: '+', color: '#ff0000' },
+      ],
+    };
+    render(<SequenceViewer sequence={seqWithFeature} onChange={() => {}} />);
+
+    const featureTile = document.querySelector('.feature-tile');
+    fireEvent.click(featureTile!);
+
+    const seqWindow = document.querySelector('.seq-window');
+    fireEvent.contextMenu(seqWindow!, { clientX: 50, clientY: 50 });
+
+    const transBtn = screen.getByRole('menuitem', { name: /copy amino-acid translation/i });
+    fireEvent.click(transBtn);
+
+    // ATGAAA -> MK
+    expect(writeTextMock).toHaveBeenCalledWith('MK');
+  });
+
+  it('copies forward sequence via context menu with full sequence fallback when nothing is selected', () => {
+    const writeTextMock = vi.fn();
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    render(<SequenceViewer sequence={sampleSequence} onChange={() => {}} />);
+
+    const seqWindow = document.querySelector('.seq-window');
+    fireEvent.contextMenu(seqWindow!, { clientX: 50, clientY: 50 });
+
+    const copyFwdBtn = screen.getByRole('menuitem', { name: /copy forward/i });
+    fireEvent.click(copyFwdBtn);
+
+    expect(writeTextMock).toHaveBeenCalledWith('ATCG');
+  });
+
+  it('closes context menu when pressing Escape or clicking outside', () => {
+    render(<SequenceViewer sequence={sampleSequence} onChange={() => {}} />);
+
+    const seqWindow = document.querySelector('.seq-window');
+    fireEvent.contextMenu(seqWindow!, { clientX: 50, clientY: 50 });
+
+    expect(screen.getByRole('menu', { name: /sequence context menu/i })).toBeTruthy();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('menu', { name: /sequence context menu/i })).toBeNull();
+  });
 });
+
 
