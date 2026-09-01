@@ -90,35 +90,24 @@ fn find_python() -> PathBuf {
     PathBuf::from("python3")
 }
 
-/// Resolves the sidecar script relative to the project root.
-fn find_sidecar_script() -> PathBuf {
-    let manifest: PathBuf = env!("CARGO_MANIFEST_DIR").into();
-    // Try python-core first (primary sidecar), then sidecar/__main__.py (alt).
-    let primary = manifest
-        .parent()
-        .unwrap()
-        .join("python-core")
-        .join("sidecar_console.py");
-    let alt = manifest.join("sidecar").join("__main__.py");
-    if primary.exists() { primary } else { alt }
-}
-
 /// Spawn a `SidecarManager` with default config, panicking on failure.
+///
+/// The sidecar is invoked exactly as the production app does — `python -m sidecar`
+/// (see `src/lib.rs`) — so the integration tests exercise the same single entry
+/// point that ships, rather than a divergent copy.
 async fn spawn_manager() -> SidecarManager {
     let python = find_python();
-    let script = find_sidecar_script();
     assert!(
         python.exists(),
         "Python executable not found at {}",
         python.display()
     );
-    assert!(
-        script.exists(),
-        "Sidecar script not found at {}",
-        script.display()
-    );
+    let args: [&std::path::Path; 2] = [
+        std::path::Path::new("-m"),
+        std::path::Path::new("sidecar"),
+    ];
     let cwd = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    SidecarManager::new(&python, &[script], &cwd, SidecarConfig::default())
+    SidecarManager::new(&python, &args, &cwd, SidecarConfig::default())
         .await
         .expect("failed to spawn sidecar manager")
 }

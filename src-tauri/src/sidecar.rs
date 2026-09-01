@@ -88,6 +88,9 @@ pub struct SidecarConfig {
     pub health_interval: Duration,
     /// Timeout for an individual health-check `ping` awaiting `pong`.
     pub health_timeout: Duration,
+    /// Timeout for an individual `send_request` awaiting its response.
+    /// Prevents a crashed/desynced sidecar from hanging a caller forever.
+    pub request_timeout: Duration,
     /// Threshold above which a payload is offloaded to a temp file.
     pub offload_threshold: usize,
 }
@@ -97,6 +100,7 @@ impl Default for SidecarConfig {
         Self {
         health_interval: Duration::from_secs(30),
         health_timeout: Duration::from_secs(5),
+        request_timeout: Duration::from_secs(60),
         offload_threshold: 1_048_576, // 1 MiB
         }
     }
@@ -536,9 +540,10 @@ impl SidecarManager {
         ));
         }
 
-        let result = rx
-        .await
-        .map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, "oneshot dropped"))??;
+        let result = time::timeout(self.config.request_timeout, rx)
+            .await
+            .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "sidecar request timed out"))?
+            .map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, "oneshot dropped"))??;
 
         Ok(result)
     }
