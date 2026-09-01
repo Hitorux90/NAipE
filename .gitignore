@@ -16,6 +16,9 @@ Thumbs.db
 .vscode/
 *.swp
 
+# Python virtual environment
+.venv/
+
 # Database
 *.db
 
@@ -33,3 +36,9 @@ docs/
 # Python
 __pycache__/
 *.pyc
+
+# Internal dev artifacts (excluded from public repo)
+.hermes/
+reports/
+SAD_Addendum_v1_EN.md
+scripts/
