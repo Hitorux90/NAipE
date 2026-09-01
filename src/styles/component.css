@@ -952,3 +952,56 @@
   outline: var(--outline-focus-width, 2px) solid var(--outline-focus-color, #2563EB);
   outline-offset: var(--outline-focus-offset, 2px);
 }
+
+/* ============================================================
+   Sequence Context Menu
+   ============================================================ */
+.seq-context-menu {
+  position: fixed;
+  min-width: 200px;
+  background: var(--color-bg-canvas, #FFFFFF);
+  border: 1px solid var(--color-border-subtle, #E5E7EB);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  padding: var(--space-4, 4px);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+}
+
+:root.dark .seq-context-menu {
+  background: var(--color-bg-sidebar, #1E293B);
+  border-color: var(--color-border-subtle, #334155);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.seq-context-menu__item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-primary, #111827);
+  font-size: var(--font-size-ui-small, 12px);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast, 100ms);
+}
+
+:root.dark .seq-context-menu__item {
+  color: var(--color-text-primary, #F8FAFC);
+}
+
+.seq-context-menu__item:hover {
+  background: var(--color-hover-bg, #E5E7EB);
+}
+
+:root.dark .seq-context-menu__item:hover {
+  background: var(--color-hover-bg, #334155);
+}
+

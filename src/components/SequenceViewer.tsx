@@ -28,6 +28,7 @@ import {
   computeFragmentSpans,
   findSpanForCutPosition,
 } from '../utils/restrictionUtils';
+import { reverseComplement, translate } from '../utils/bio';
 
 /**
  * Robustly converts any color format (hex, rgb, named color) into a valid rgba(r,g,b,alpha) string.
@@ -135,6 +136,11 @@ const getCharFeatureTintStyle = (color?: string, isDark?: boolean) => {
   };
 };
 
+const getContextMenuStyle = (x: number, y: number) => ({
+  top: `${y}px`,
+  left: `${x}px`,
+});
+
 const hiddenTextareaStyle = {
   position: 'absolute' as const,
   width: '1px',
@@ -200,6 +206,8 @@ export default function SequenceViewer({
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const contextMenuRef = useRef<HTMLUListElement | null>(null);
   const [primerFwd, setPrimerFwd] = useState('');
   const [primerRev, setPrimerRev] = useState('');
 
@@ -222,6 +230,26 @@ export default function SequenceViewer({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isMenuOpen]);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setContextMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [contextMenu]);
 
   // Interactive sequence window state (R1-R4)
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
@@ -704,6 +732,46 @@ export default function SequenceViewer({
     e.preventDefault();
   }
 
+  // Right-click context menu handler for copying forward / reverse-complement / amino-acid translation.
+  // If a region is selected, operates on that region; otherwise falls back to the full sequence.
+  function handleContextMenu(e: React.MouseEvent) {
+    if (!sequence || !sequence.sequence) return;
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }
+
+  function getTargetSequence(): string {
+    if (!sequence || !sequence.sequence) return '';
+    if (selectedRange) {
+      return sequence.sequence.slice(selectedRange.start - 1, selectedRange.end);
+    }
+    return sequence.sequence;
+  }
+
+  function handleCopyForward() {
+    const text = getTargetSequence();
+    if (text) {
+      navigator.clipboard.writeText(text);
+    }
+    setContextMenu(null);
+  }
+
+  function handleCopyReverseComplement() {
+    const text = getTargetSequence();
+    if (text) {
+      navigator.clipboard.writeText(reverseComplement(text));
+    }
+    setContextMenu(null);
+  }
+
+  function handleCopyTranslation() {
+    const text = getTargetSequence();
+    if (text) {
+      navigator.clipboard.writeText(translate(text));
+    }
+    setContextMenu(null);
+  }
+
   if (!sequence) {
     return (
       <div className="canvas__empty">
@@ -910,6 +978,7 @@ export default function SequenceViewer({
             onPaste={handlePaste}
             onCopy={handleCopy}
             onCut={handleCut}
+            onContextMenu={handleContextMenu}
           >
             {/* Hidden textarea element for Vitest contract compatibility */}
             <textarea
@@ -1082,6 +1151,44 @@ export default function SequenceViewer({
               })}
             </div>
           </div>
+
+          {contextMenu && (
+            <ul
+              ref={contextMenuRef}
+              className="seq-context-menu"
+              style={getContextMenuStyle(contextMenu.x, contextMenu.y)}
+              role="menu"
+              aria-label="Sequence context menu"
+            >
+              <li role="none">
+                <button
+                  role="menuitem"
+                  className="seq-context-menu__item"
+                  onClick={handleCopyForward}
+                >
+                  Copy forward
+                </button>
+              </li>
+              <li role="none">
+                <button
+                  role="menuitem"
+                  className="seq-context-menu__item"
+                  onClick={handleCopyReverseComplement}
+                >
+                  Copy reverse-complement
+                </button>
+              </li>
+              <li role="none">
+                <button
+                  role="menuitem"
+                  className="seq-context-menu__item"
+                  onClick={handleCopyTranslation}
+                >
+                  Copy amino-acid translation
+                </button>
+              </li>
+            </ul>
+          )}
         </>
       )}
 
