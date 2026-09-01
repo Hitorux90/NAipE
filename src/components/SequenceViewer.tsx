@@ -745,6 +745,11 @@ export default function SequenceViewer({
     if (selectedRange) {
       return sequence.sequence.slice(selectedRange.start - 1, selectedRange.end);
     }
+    const selection = window.getSelection()?.toString();
+    if (selection) {
+      const clean = selection.replace(/\s+/g, '');
+      if (clean.length > 0) return clean;
+    }
     return sequence.sequence;
   }
 

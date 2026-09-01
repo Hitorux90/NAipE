@@ -259,6 +259,41 @@ describe('SequenceViewer', () => {
     expect(writeTextMock).toHaveBeenCalledWith('ATCG');
   });
 
+  it('respects native mouse selection (not selectedRange) in the context menu copy handlers', () => {
+    const writeTextMock = vi.fn();
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    // Simulate a native DOM selection (click-drag in the viewport) that does NOT set selectedRange.
+    const getSelectionMock = vi.spyOn(window, 'getSelection').mockReturnValue({
+      toString: () => 'GGGTTTGATT',
+      // minimal Selection-like shape; only toString() is consumed by getTargetSequence()
+    } as unknown as Selection);
+
+    render(<SequenceViewer sequence={sampleSequence} onChange={() => {}} />);
+
+    const seqWindow = document.querySelector('.seq-window');
+    fireEvent.contextMenu(seqWindow!, { clientX: 50, clientY: 50 });
+
+    // Copy reverse-complement: GGGTTTGATT -> AATCAAACCC
+    const revCompBtn = screen.getByRole('menuitem', { name: /copy reverse-complement/i });
+    fireEvent.click(revCompBtn);
+    expect(writeTextMock).toHaveBeenCalledWith('AATCAAACCC');
+
+    // Re-open the menu (it closes after each copy) for the translation copy.
+    fireEvent.contextMenu(seqWindow!, { clientX: 50, clientY: 50 });
+
+    // Copy amino-acid translation: GGG TTT GAT T -> G F D (frame 0; trailing T dropped)
+    const transBtn = screen.getByRole('menuitem', { name: /copy amino-acid translation/i });
+    fireEvent.click(transBtn);
+    expect(writeTextMock).toHaveBeenCalledWith('GFD');
+
+    getSelectionMock.mockRestore();
+  });
+
   it('closes context menu when pressing Escape or clicking outside', () => {
     render(<SequenceViewer sequence={sampleSequence} onChange={() => {}} />);
 
