@@ -723,7 +723,8 @@
 }
 
 .seq-lines-wrapper {
-  max-height: 480px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: auto;
   background: var(--color-bg-canvas, #FFFFFF);
@@ -799,11 +800,13 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px #0000001a;
   border-left: 3px solid var(--feature-color, #888888);
   box-sizing: border-box;
   cursor: pointer;
   transition: transform 0.1s ease, box-shadow 0.1s ease;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 :root.dark .seq-feature-label {

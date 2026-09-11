@@ -715,7 +715,8 @@ export default function SequenceViewer({
 
     const selection = window.getSelection()?.toString();
     if (selection) {
-      const cleanSeq = selection.replace(/\s+/g, '');
+      // Keep only IUPAC nucleotide chars — strips feature-label text and whitespace
+      const cleanSeq = selection.replace(/[^ACGTURYSWKMBDHVacgturyswkmbdhv]/g, '');
       if (cleanSeq.length > 0) {
         e.clipboardData.setData('text/plain', cleanSeq);
         e.preventDefault();
@@ -747,7 +748,10 @@ export default function SequenceViewer({
     }
     const selection = window.getSelection()?.toString();
     if (selection) {
-      const clean = selection.replace(/\s+/g, '');
+      // Strip whitespace AND non-nucleotide label text that feature labels
+      // may inject into the browser selection (e.g. "promoter", "CDS").
+      // Keep only IUPAC nucleotide characters so copy is always clean.
+      const clean = selection.replace(/[^ACGTURYSWKMBDHVacgturyswkmbdhv]/g, '');
       if (clean.length > 0) return clean;
     }
     return sequence.sequence;
