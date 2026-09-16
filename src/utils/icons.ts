@@ -1,5 +1,5 @@
 /* ============================================================
-   NAipE — Lucide React icon registry (Fase 1b)
+   NAipE — Lucide React icon registry (Phase 1b)
    Single source of truth for icon usage.
    ============================================================ */
 
